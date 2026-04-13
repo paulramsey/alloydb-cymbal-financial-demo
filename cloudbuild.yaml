@@ -1,0 +1,16 @@
+steps:
+  # 1. Build the unified container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}', '.']
+  
+  # 2. Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}'
+
+substitutions:
+  _REGION: 'us-central1'
+  _REPOSITORY: 'alloydb-ai-financial-demo-repo'
+  _IMAGE_NAME: 'alloydb-ai-financial-demo-image'
