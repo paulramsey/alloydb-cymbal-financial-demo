@@ -60,9 +60,6 @@ data/symbols_valid_meta.csv.sample
 data/form_13f_holdings.jsonl
 temp_hf_data/
 
-# TPC Bulk Load Data
-tpc/CEF58AED-68F4-4D9D-A1FB-DB538D587782-TPC-E-Tool/flat_out/
-
 # Python compiled files
 *.pyc
 __pycache__/

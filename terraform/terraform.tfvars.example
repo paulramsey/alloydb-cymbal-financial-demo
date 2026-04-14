@@ -1,0 +1,20 @@
+### Update these variables for your environment ###
+gcp_project_id    = "YOUR_PROJECT_ID"
+region            = "us-central1"
+alloydb_password  = "StrongPassword!"
+argolis           = false # set to true if in Argolis
+alloydb_cpu_count = 4    # Default to 4 for cost savings. Override to 32 during initial import for speed.
+
+
+### Leave variables below this line as-is ###
+
+alloydb_cluster_id         = "alloydb-psa-cluster"
+alloydb_instance_id        = "alloydb-psa-instance"
+alloydb_availability_type  = "ZONAL"
+alloydb_database           = "postgres"
+database_backup_uri        = "gs://pr-public-demo-data/cymbal-financial-demo/postgres.sql"
+alloydb_image_name         = "alloydb-ai-financial-demo-image"
+demo_app_name              = "alloydb-ai-financial-demo"
+demo_app_image_name        = "alloydb-ai-financial-demo-app"
+alloydb_repository_id      = "alloydb-ai-financial-demo-repo"
+bigquery_import_bucket_uri = "gs://pr-public-demo-data/cymbal-financial-demo/bigquery"

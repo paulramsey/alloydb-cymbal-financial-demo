@@ -24,20 +24,6 @@ export KAGGLE_KEY="..."
 
 ## 🚀 Step-by-Step Execution Sequence
 
-### 🏗️ 1. Transactional Benchmark (TPC-E)
-Run the DBT-5 workload generator to hydrate standard brokerage relational anchors:
-```bash
-# Execute compilation and setup loop
-./scripts/run_dbt5.sh
-```
-
-> [!NOTE]
-> The setup script automatically applies the `scripts/dbt5-macos.patch` containing macOS fixes on fresh clones.
-> If you need to re-apply the patch to an existing `dbt5/` directory:
-> ```bash
-> cd dbt5 && git apply ../scripts/dbt5-macos.patch
-> ```
-
 ### 📋 2. Business Reference (BigQuery)
 Populate Nasdaq classifications and Yahoo currency watermarks:
 ```bash

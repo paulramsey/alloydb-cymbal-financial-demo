@@ -1,15 +1,30 @@
-# AlloyDB with PSA, AI, and Columnar Engine (Terraform)
+# AlloyDB AI Cymbal Financial Services Demo
 
-This repository contains Terraform code to deploy a fully configured **Google Cloud AlloyDB** environment with advanced features enabled, including **AlloyDB AI**, **Columnar Engine**, and **Parameterized Secure Views**.
+This repository contains Terraform code to deploy a fully configured **Google Cloud AlloyDB** environment and a complete **Financial Services Demo Application**. The infrastructure includes advanced features like **AlloyDB AI** and the **Columnar Engine**.
 
 It also sets up a complete network infrastructure using **Private Service Access (PSA)** and a Test VM.
+
+## Demo Application Overview
+
+This demo showcases a financial analytics platform built on Google Cloud, focusing on the analysis of real-world SEC filings (Form 13F and 10-K). It demonstrates how AlloyDB and BigQuery can be used together for hybrid operational and analytical workflows.
+
+### Key Features Demonstrated
+
+*   **Semantic Search on SEC Filings**: Leveraging **AlloyDB AI** with `pgvector` to perform semantic search over 3 million chunks of SEC 10-K documents.
+*   **Lakehouse Federation**: Combining real-time and vector data in AlloyDB with **BigQuery** and Apache Iceberg (via **BigLake**).
+*   **Vector-based Fraud Detection**: Demonstrating fraud detection capabilities using vector search as an anomaly detection engine and leveraging **ai.if()** to perform nuanced inspection of financial transactions.
+
+### Application Stack
+
+*   **Backend**: A **FastAPI** application serving search, analysis, and fraud detection APIs.
+*   **Frontend**: A **Vite-based React** application (bundled with the backend for simplified deployment).
+
 
 ## Features Deployed
 
 *   **AlloyDB Cluster & Instance**:
-    *   **AlloyDB AI**: Enabled (`google_ml_integration.enable_model_support`, `alloydb_ai_nl.enabled`).
+    *   **AlloyDB AI**: Enabled (`google_ml_integration.enable_model_support`).
     *   **Columnar Engine**: Enabled (`google_columnar_engine.enabled`) for analytical performance.
-    *   **Parameterized Secure Views**: Enabled (`parameterized_views.enabled`).
     *   **High Availability**: Configured (Zonal/Regional as defined in `variables.tf`).
 *   **Networking**:
     *   **VPC**: A dedicated VPC (`demo-vpc`) for the environment.
@@ -17,12 +32,6 @@ It also sets up a complete network infrastructure using **Private Service Access
     *   **Public IP**: Optional public access restricted to your IP address.
 *   **Testing**:
     *   **Test VM**: A Compute Engine instance (`test-vm`) compliant with Shielded VM policies, pre-loaded with `postgresql-client` for connectivity testing.
-
-## Architectural Decisions & Packaging
-For repeatable deployments in other GCP architectures, this demonstration includes:
-- **Single-Container deployments:** The Vite frontend statically bundled inside the FastAPI backend (refer to `internal/design-decisions.md`).
-- **Remote Container Builds:** Automated builds via Google Cloud Build, removing the need for local Docker setups.
-- **Automated Secrets configuration:** Provisioned GCP Secret Manager configurations for sensitive database passwords.
 
 ## Prerequisites
 
@@ -65,17 +74,17 @@ Before deploying, ensure you have the following:
     ```
 
 3.  **Configure Variables**:
-    *   Update `terraform.tfvars` with your Project ID and Region.
-    *   **Important**: Update `alloydb_password` with a strong password.
-    *   **Important**: Set `argolis` to `true` if deploying to an Argolis environment. This will handle necessary org policies for you.
+    *   Rename the sample file `terraform.tfvars.example` to `terraform.tfvars`.
+    *   Update the first four variables in `terraform.tfvars` to match your environment.
+    *   *(Note: `terraform.tfvars` is excluded in `.gitignore` to ensure sensitive information like passwords are not committed to Git.)*
     
     ```hcl
     # terraform.tfvars
+    ### Update these variables for your environment ###
     gcp_project_id   = "YOUR_PROJECT_ID"
     region           = "us-central1"
-    alloydb_password        = "StrongPassword!"
-    alloydb_availability_type = "ZONAL" # or REGIONAL
-    # ... other variables
+    alloydb_password = "StrongPassword!"
+    argolis          = false # set to true if in Argolis
     ```
 
 4.  **Review the Plan**:
@@ -89,6 +98,24 @@ Before deploying, ensure you have the following:
     ```
     *   Type `yes` when prompted.
     *   Deployment typically takes 15-20 minutes (AlloyDB cluster creation).
+
+### Fast Data Import Workflow
+The data import process of 192GB and subsequent index builds can be slow on a small instance. To maximize performance, it is recommended to initially deploy the instance with 32 vCPUs, and then scale down to 4 vCPUs once the import and indexing are complete.
+
+1.  **Initial Deploy with 32 vCPUs**:
+    Run `terraform apply` overriding the CPU count:
+    ```bash
+    terraform apply -var="alloydb_cpu_count=32"
+    ```
+    *   This will also apply aggressive performance database flags (like `maintenance_work_mem` and `max_wal_size`) tailored for large imports.
+2.  **Wait for Import and Indexing to Complete**:
+    The sequential pipeline will run DDL, then import CSV files, and finally create indexes.
+3.  **Scale Down to 4 vCPUs**:
+    Once the import and indexing are complete, run `terraform apply` without the override to revert to the default of 4 vCPUs (assuming you have `alloydb_cpu_count = 4` or left it at default in your `terraform.tfvars`):
+    ```bash
+    terraform apply
+    ```
+    *   This will also remove the performance flags, reverting them to database defaults.
 
 ## Connecting to AlloyDB
 
@@ -142,14 +169,5 @@ Alternatively, you can run `terraform destroy`, but deleting the project is the 
 ## Disclaimers
 
 This is not an officially supported Google product.
-
-**TPC Transactional Load Disclaimer:**
-Portions of this demo use load generated via TPC-provided software. These results are for demonstration of AlloyDB features and are not comparable to official TPC Benchmark Results.
-
-## TPC-E Tool Usage Requirements
-
-Based on the [TPC-E Tools EULA](file:///YOUR_WORKSPACE_PATH/tpc/CEF58AED-68F4-4D9D-A1FB-DB538D587782-TPC-E-Tool/EULA.txt):
--   **Scope of Use**: Limited to producing official TPC Benchmark Results (requires Full Disclosure Report and Executive Summary) or for internal, academic, and research purposes.
--   **Permitted Modifications**: Modifications are allowed for research or product development, but results based on such modifications must be clearly identified as **not being comparable to TPC Benchmark Results**.
 
 This software is provided "as is", without warranty of any kind, expressed or implied, including but not limited to, the warranties of merchantability, fitness for a particular purpose, and/or infringement.

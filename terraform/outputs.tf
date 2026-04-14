@@ -43,9 +43,9 @@ output "gcs_bucket_name" {
   value       = google_storage_bucket.text_data.name
 }
 
-output "alloydb_read_pool_ip" {
-  description = "The IP address of the AlloyDB read pool."
-  value       = data.google_alloydb_instance.read_pool.ip_address
-}
+# output "alloydb_read_pool_ip" {
+#   description = "The IP address of the AlloyDB read pool."
+#   value       = data.google_alloydb_instance.read_pool.ip_address
+# }
 
 

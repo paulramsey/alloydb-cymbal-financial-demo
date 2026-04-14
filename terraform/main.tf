@@ -54,7 +54,10 @@ resource "google_project_service" "apis" {
     "networkconnectivity.googleapis.com",
     "secretmanager.googleapis.com",
     "monitoring.googleapis.com",
-    "discoveryengine.googleapis.com"
+    "discoveryengine.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "run.googleapis.com"
   ])
   service                    = each.key
   disable_dependent_services = true
@@ -197,23 +200,30 @@ resource "google_alloydb_instance" "primary" {
   instance_type     = "PRIMARY"
   availability_type = var.alloydb_availability_type
   machine_config {
-    cpu_count = 16
+    cpu_count = var.alloydb_cpu_count
   }
-  database_flags = {
-    "google_columnar_engine.enabled"                = "on"
-    "google_columnar_engine.enable_vectorized_join" = "on"
-    "google_columnar_engine.enable_index_caching"   = "on"
-    "google_ml_integration.enable_model_support"    = "on"
-    "google_ml_integration.enable_ai_query_engine"  = "on"
-    "alloydb_ai_nl.enabled"                         = "on"
-    "parameterized_views.enabled"                   = "on"
-    "password.enforce_complexity"                   = "on"
-    "password.min_uppercase_letters"                = "1"
-    "password.min_numerical_chars"                  = "1"
-    "password.min_pass_length"                      = "10"
-    "bigquery_fdw.enabled"                          = "on"
-    "alloydb.enable_pg_cron"                        = "on"
-  }
+  database_flags = merge(
+    {
+      "google_columnar_engine.enabled"                = "on"
+      "google_columnar_engine.enable_vectorized_join" = "on"
+      "google_columnar_engine.enable_index_caching"   = "on"
+      "google_ml_integration.enable_model_support"    = "on"
+      "google_ml_integration.enable_ai_query_engine"  = "on"
+      "password.enforce_complexity"                   = "on"
+      "password.min_uppercase_letters"                = "1"
+      "password.min_numerical_chars"                  = "1"
+      "password.min_pass_length"                      = "10"
+      "bigquery_fdw.enabled"                          = "on"
+      "alloydb.enable_pg_cron"                        = "on"
+    },
+    var.alloydb_cpu_count == 32 ? {
+      # Import optimizations
+      "maintenance_work_mem" = "33554432"
+      "max_wal_size"         = "20480"
+      "checkpoint_timeout"   = "1800"
+      "autovacuum"           = "off"
+    } : {}
+  )
   client_connection_config {
     ssl_config {
       ssl_mode = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
@@ -271,7 +281,7 @@ resource "null_resource" "alloydb_read_pool" {
           --cpu-count=2 \
           --assign-inbound-public-ip=ASSIGN_IPV4 \
           --ssl-mode=ALLOW_UNENCRYPTED_AND_ENCRYPTED \
-          --database-flags="google_columnar_engine.enabled=on,google_columnar_engine.enable_vectorized_join=on,google_columnar_engine.enable_index_caching=on,google_ml_integration.enable_model_support=on,google_ml_integration.enable_ai_query_engine=on,alloydb_ai_nl.enabled=on,parameterized_views.enabled=on,password.enforce_complexity=on,password.min_uppercase_letters=1,password.min_numerical_chars=1,password.min_pass_length=10,bigquery_fdw.enabled=on" \
+          --database-flags="google_columnar_engine.enabled=on,google_columnar_engine.enable_vectorized_join=on,google_columnar_engine.enable_index_caching=on,google_ml_integration.enable_model_support=on,google_ml_integration.enable_ai_query_engine=on,password.enforce_complexity=on,password.min_uppercase_letters=1,password.min_numerical_chars=1,password.min_pass_length=10,bigquery_fdw.enabled=on" \
           --authorized-external-networks=${self.triggers.my_ip}
       fi
     EOT
@@ -296,13 +306,13 @@ resource "null_resource" "alloydb_read_pool" {
   }
 }
 
-data "google_alloydb_instance" "read_pool" {
-  depends_on = [null_resource.alloydb_read_pool]
-
-  cluster_id  = var.alloydb_cluster_id
-  location    = var.region
-  instance_id = "${var.alloydb_instance_id}-read-pool"
-}
+# data "google_alloydb_instance" "read_pool" {
+#   depends_on = [null_resource.alloydb_read_pool]
+# 
+#   cluster_id  = var.alloydb_cluster_id
+#   location    = var.region
+#   instance_id = "${var.alloydb_instance_id}-read-pool"
+# }
 
 
 

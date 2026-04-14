@@ -80,3 +80,9 @@ variable "bigquery_import_bucket_uri" {
   type        = string
   default     = "gs://pr-public-demo-data/cymbal-financial-demo/bigquery"
 }
+
+variable "alloydb_cpu_count" {
+  description = "CPU count for the AlloyDB instance. Use 64 for fast import, then scale down."
+  type        = number
+  default     = 4
+}
