@@ -245,7 +245,7 @@ resource "google_alloydb_instance" "primary" {
 
 resource "null_resource" "alloydb_read_pool" {
   depends_on = [
-    google_alloydb_instance.primary
+    null_resource.run_indexes
   ]
 
   triggers = {
@@ -280,7 +280,7 @@ resource "null_resource" "alloydb_read_pool" {
           --autoscaler-max-node-count=${self.triggers.max_node_count} \
           --autoscaler-target-cpu-usage=0.6 \
           --cpu-count=2 \
-          --machine-type="c4a-highmem-${var.alloydb_cpu_count}-lssd" \
+          --machine-type="c4a-highmem-2" \
           --assign-inbound-public-ip=ASSIGN_IPV4 \
           --ssl-mode=ALLOW_UNENCRYPTED_AND_ENCRYPTED \
           --database-flags="google_columnar_engine.enabled=on,google_columnar_engine.enable_vectorized_join=on,google_columnar_engine.enable_index_caching=on,google_ml_integration.enable_model_support=on,google_ml_integration.enable_ai_query_engine=on,password.enforce_complexity=on,password.min_uppercase_letters=1,password.min_numerical_chars=1,password.min_pass_length=10,bigquery_fdw.enabled=on" \
