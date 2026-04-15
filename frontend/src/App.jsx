@@ -488,7 +488,7 @@ function App() {
           
           setConcurrentReads((data.total_reads || 0) * 88)
           setConcurrentWrites((data.total_writes || 0) * 88)
-          setPrimaryConnections((data.total_connections || 0) * 88)
+          setPrimaryConnections(data.total_connections || 0)
           setPrimaryCPU((data.active_connections || 0) * 88)
           setLastReadQuery(data.last_read_query || '')
           setLastWriteQuery(data.last_write_query || '')
@@ -518,10 +518,10 @@ function App() {
             
             // Simulate pool metrics if TQF is enabled and active
             if (tqfEnabled && forwarded > 0) {
-              setPoolConnections(Math.min(data.total_connections, 10) * 88)
+              setPoolConnections(Math.min(data.total_connections, 10))
               setPoolCPU(Math.min(data.active_connections, 8) * 88)
             } else {
-              setPoolConnections(88)
+              setPoolConnections(1)
               setPoolCPU(0)
             }
         } catch (error) {
