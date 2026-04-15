@@ -94,7 +94,7 @@ Before deploying, ensure you have the following:
     ```
 
 5.  **Apply the Configuration (High CPU for Fast Import)**:
-    To maximize performance during the large data import (192GB) and index builds, it is recommended to initially deploy the instance with 32 vCPUs.
+    To maximize performance during the large data import (~72GB) and index builds, it is recommended to initially deploy the instance with 32 vCPUs.
     
     Run `terraform apply` overriding the CPU count:
     ```bash

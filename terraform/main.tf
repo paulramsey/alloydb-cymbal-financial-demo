@@ -201,6 +201,7 @@ resource "google_alloydb_instance" "primary" {
   availability_type = var.alloydb_availability_type
   machine_config {
     cpu_count = var.alloydb_cpu_count
+    machine_type = "c4a-highmem-${var.alloydb_cpu_count}-lssd"
   }
   database_flags = merge(
     {
@@ -220,7 +221,7 @@ resource "google_alloydb_instance" "primary" {
       # Import optimizations
       "maintenance_work_mem" = "33554432"
       "max_wal_size"         = "20480"
-      "checkpoint_timeout"   = "1800"
+      "checkpoint_timeout"   = "300"
       "autovacuum"           = "off"
     } : {}
   )
@@ -279,6 +280,7 @@ resource "null_resource" "alloydb_read_pool" {
           --autoscaler-max-node-count=${self.triggers.max_node_count} \
           --autoscaler-target-cpu-usage=0.6 \
           --cpu-count=2 \
+          --machine-type="c4a-highmem-${var.alloydb_cpu_count}-lssd" \
           --assign-inbound-public-ip=ASSIGN_IPV4 \
           --ssl-mode=ALLOW_UNENCRYPTED_AND_ENCRYPTED \
           --database-flags="google_columnar_engine.enabled=on,google_columnar_engine.enable_vectorized_join=on,google_columnar_engine.enable_index_caching=on,google_ml_integration.enable_model_support=on,google_ml_integration.enable_ai_query_engine=on,password.enforce_complexity=on,password.min_uppercase_letters=1,password.min_numerical_chars=1,password.min_pass_length=10,bigquery_fdw.enabled=on" \
