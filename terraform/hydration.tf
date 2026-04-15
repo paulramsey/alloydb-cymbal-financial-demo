@@ -128,3 +128,27 @@ resource "null_resource" "run_indexes" {
     EOT
   }
 }
+
+resource "google_storage_bucket_object" "setup_fdw_script" {
+  name   = "alloydb-setup-fdw.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/alloydb-setup-fdw.sql"
+}
+
+resource "null_resource" "run_setup_fdw" {
+  depends_on = [
+    null_resource.run_indexes,
+    google_storage_bucket_object.setup_fdw_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.setup_fdw_script.name} \
+        --sql
+    EOT
+  }
+}

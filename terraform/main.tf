@@ -358,7 +358,8 @@ locals {
     "roles/serviceusage.serviceUsageConsumer",
     "roles/storage.admin",
     "roles/servicenetworking.serviceAgent",
-    "roles/discoveryengine.viewer"
+    "roles/discoveryengine.viewer",
+    "roles/bigquery.admin"
     # Add any other project-wide roles here
   ]
 
