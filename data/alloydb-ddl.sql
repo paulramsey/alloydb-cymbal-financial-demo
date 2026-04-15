@@ -1,12 +1,12 @@
 -- DDL for table fraud_labels
 CREATE TABLE IF NOT EXISTS fraud_labels (
-  transaction_id bigint NOT NULL,
+  transaction_id bigint NOT NULL PRIMARY KEY,
   is_fraud boolean NOT NULL
 );
 
 -- DDL for table cards
 CREATE TABLE IF NOT EXISTS cards (
-  id bigint NOT NULL,
+  id bigint NOT NULL PRIMARY KEY,
   client_id integer,
   card_brand character varying,
   card_type character varying,
@@ -23,13 +23,13 @@ CREATE TABLE IF NOT EXISTS cards (
 
 -- DDL for table mcc_codes
 CREATE TABLE IF NOT EXISTS mcc_codes (
-  mcc smallint NOT NULL,
+  mcc smallint NOT NULL PRIMARY KEY,
   description character varying NOT NULL
 );
 
 -- DDL for table transactions_25_26
 CREATE TABLE IF NOT EXISTS transactions_25_26 (
-  id bigint NOT NULL,
+  id bigint NOT NULL PRIMARY KEY,
   date timestamp without time zone,
   client_id integer,
   card_id integer,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS transactions_25_26 (
 
 -- DDL for table users
 CREATE TABLE IF NOT EXISTS users (
-  id bigint NOT NULL,
+  id bigint NOT NULL PRIMARY KEY,
   current_age integer,
   retirement_age integer,
   birth_year integer,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- DDL for table sec_document_chunks
 CREATE TABLE IF NOT EXISTS sec_document_chunks (
-  id BIGSERIAL NOT NULL,
+  id BIGSERIAL NOT NULL PRIMARY KEY,
   ticker character varying,
   accession_number character varying,
   chunk_index integer,

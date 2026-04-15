@@ -85,8 +85,21 @@ resource "null_resource" "import_csv" {
       echo "Started import for ${each.value}. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $OPERATION_PATH --region=${var.region} --format="json")
-        DONE=$(echo $DESC | jq -r '.done')
+        # Use basename to extract only the operation ID. OPERATION_PATH contains the full resource name,
+        # which causes double-prefixing in the URL when combined with --region.
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        
+        # Extract only the JSON part (starting with {) to ignore potential environment noise at the beginning.
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        # If parsing failed (e.g. command failed with non-JSON error), print the output and retry.
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
         
         if [ "$DONE" = "true" ]; then
           ERROR=$(echo $DESC | jq -r '.error')
@@ -119,20 +132,55 @@ resource "null_resource" "run_indexes" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
         --region=${var.region} \
         --project=${var.gcp_project_id} \
         --database=${var.alloydb_database} \
         --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.indexes_script.name} \
-        --sql
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started indexes creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        # Use basename to extract only the operation ID. OPERATION_PATH contains the full resource name,
+        # which causes double-prefixing in the URL when combined with --region.
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        
+        # Extract only the JSON part (starting with {) to ignore potential environment noise at the beginning.
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        # If parsing failed (e.g. command failed with non-JSON error), print the output and retry.
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
     EOT
   }
 }
 
 resource "google_storage_bucket_object" "setup_fdw_script" {
-  name   = "alloydb-setup-fdw.sql"
+  name   = "alloydb-setup-fdw-and-reverse-etl.sql"
   bucket = google_storage_bucket.text_data.name
-  source = "${path.module}/../data/alloydb-setup-fdw.sql"
+  source = "${path.module}/../data/alloydb-setup-fdw-and-reverse-etl.sql"
 }
 
 resource "null_resource" "run_setup_fdw" {

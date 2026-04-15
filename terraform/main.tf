@@ -231,7 +231,7 @@ resource "google_alloydb_instance" "primary" {
   }
 
   connection_pool_config {
-    enabled      = false
+    enabled      = true
   }
 
   network_config {

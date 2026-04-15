@@ -6,18 +6,19 @@ It also sets up a complete network infrastructure using **Private Service Access
 
 ## Demo Application Overview
 
-This demo showcases a financial analytics platform built on Google Cloud, focusing on the analysis of real-world SEC filings (Form 13F and 10-K). It demonstrates how AlloyDB and BigQuery can be used together for hybrid operational and analytical workflows.
+This demo showcases a financial platform for a fictional investment firm, **Cymbal Investments**. It demonstrates advanced AlloyDB capabilities for high-frequency trading workloads, SEC filing analysis, and real-time fraud detection.
 
 ### Key Features Demonstrated
 
-*   **Semantic Search on SEC Filings**: Leveraging **AlloyDB AI** with `pgvector` to perform semantic search over 3 million chunks of SEC 10-K documents.
-*   **Lakehouse Federation**: Combining real-time and vector data in AlloyDB with **BigQuery** and Apache Iceberg (via **BigLake**).
-*   **Vector-based Fraud Detection**: Demonstrating fraud detection capabilities using vector search as an anomaly detection engine and leveraging **ai.if()** to perform nuanced inspection of financial transactions.
+*   **Transparent Query Forwarding (TQF)**: Automatically reroutes expensive read queries from the primary instance to the read pool without application code changes, ensuring read-after-write consistency and low latency for mission-critical writes.
+*   **Lakehouse Federation**: Unifies live transactional data with historical archives in BigQuery and Apache Iceberg (parquet), allowing direct queries across the entire data platform through a single lens.
+*   **Hybrid Search**: Combines keyword precision with semantic depth using Google's ScaNN algorithm and Supercharged HNSW with Columnar Engine acceleration, scaling up to 10B+ vectors. Supports native GIN indexing, the RUM extension for full-text performance, and future native BM25. Provides seamless reranking with Reciprocal Rank Fusion (RRF) and Vertex AI models (or bring your own model).
+*   **Real-Time Fraud Detection**: Leverages vector search for anomaly detection in high-velocity transaction streams and enhances recall with Gemini's reasoning via the `ai.if()` function.
 
 ### Application Stack
 
-*   **Backend**: A **FastAPI** application serving search, analysis, and fraud detection APIs.
-*   **Frontend**: A **Vite-based React** application (bundled with the backend for simplified deployment).
+*   **Backend**: A **FastAPI** application serving search, analysis, and fraud detection APIs, demonstrating native in-database AI execution and array-based processing.
+*   **Frontend**: A **Vite-based React** application providing interfaces for TQF simulation, Hybrid Search, and Fraud Detection visualization.
 
 
 ## Features Deployed
@@ -92,30 +93,65 @@ Before deploying, ensure you have the following:
     terraform plan
     ```
 
-5.  **Apply the Configuration**:
-    ```bash
-    terraform apply
-    ```
-    *   Type `yes` when prompted.
-    *   Deployment typically takes 15-20 minutes (AlloyDB cluster creation).
-
-### Fast Data Import Workflow
-The data import process of 192GB and subsequent index builds can be slow on a small instance. To maximize performance, it is recommended to initially deploy the instance with 32 vCPUs, and then scale down to 4 vCPUs once the import and indexing are complete.
-
-1.  **Initial Deploy with 32 vCPUs**:
+5.  **Apply the Configuration (High CPU for Fast Import)**:
+    To maximize performance during the large data import (192GB) and index builds, it is recommended to initially deploy the instance with 32 vCPUs.
+    
     Run `terraform apply` overriding the CPU count:
     ```bash
     terraform apply -var="alloydb_cpu_count=32"
     ```
+    *   Type `yes` when prompted.
+    *   Deployment typically takes up to 2 hours end-to-end, as it loads millions of records and builds very large indexes (ScaNN, HNSW, GIN, and RUM).
     *   This will also apply aggressive performance database flags (like `maintenance_work_mem` and `max_wal_size`) tailored for large imports.
-2.  **Wait for Import and Indexing to Complete**:
-    The sequential pipeline will run DDL, then import CSV files, and finally create indexes.
-3.  **Scale Down to 4 vCPUs**:
+
+6.  **Scale Down to 4 vCPUs**:
     Once the import and indexing are complete, run `terraform apply` without the override to revert to the default of 4 vCPUs (assuming you have `alloydb_cpu_count = 4` or left it at default in your `terraform.tfvars`):
     ```bash
     terraform apply
     ```
     *   This will also remove the performance flags, reverting them to database defaults.
+
+### Verifying Data Import
+After the deployment and data import are complete, you can verify the loaded data by running the row count check script:
+1. Connect to the AlloyDB instance (see instructions below).
+2. Execute the SQL script below to compare your row counts with the expected counts:
+
+```sql
+SELECT 
+    'users' AS table_name, 
+    (SELECT COUNT(*) FROM users) AS imported_count, 
+    2000 AS target_row_count
+UNION ALL
+SELECT 
+    'mcc_codes', 
+    (SELECT COUNT(*) FROM mcc_codes), 
+    109
+UNION ALL
+SELECT 
+    'transactions_25_26', 
+    (SELECT COUNT(*) FROM transactions_25_26), 
+    2678137
+UNION ALL
+SELECT 
+    'fraud_labels', 
+    (SELECT COUNT(*) FROM fraud_labels), 
+    8914963
+UNION ALL
+SELECT 
+    'cards', 
+    (SELECT COUNT(*) FROM cards), 
+    6146
+UNION ALL
+SELECT 
+    'sec_document_chunks', 
+    (SELECT COUNT(*) FROM sec_document_chunks), 
+    3256048
+UNION ALL
+SELECT 
+    'sec_to_iceberg_mapping', 
+    (SELECT COUNT(*) FROM sec_to_iceberg_mapping), 
+    885;
+```
 
 ## Connecting to AlloyDB
 
