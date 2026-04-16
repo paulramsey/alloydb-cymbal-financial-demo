@@ -118,16 +118,16 @@ resource "null_resource" "import_csv" {
   }
 }
 
-resource "google_storage_bucket_object" "indexes_script" {
-  name   = "alloydb-indexes.sql"
+resource "google_storage_bucket_object" "post_load_prep_script" {
+  name   = "alloydb-post-load-prep.sql"
   bucket = google_storage_bucket.text_data.name
-  source = "${path.module}/../data/alloydb-indexes.sql"
+  source = "${path.module}/../data/alloydb-post-load-prep.sql"
 }
 
-resource "null_resource" "run_indexes" {
+resource "null_resource" "post_load_prep" {
   depends_on = [
     null_resource.import_csv,
-    google_storage_bucket_object.indexes_script
+    google_storage_bucket_object.post_load_prep_script
   ]
 
   provisioner "local-exec" {
@@ -136,22 +136,395 @@ resource "null_resource" "run_indexes" {
         --region=${var.region} \
         --project=${var.gcp_project_id} \
         --database=${var.alloydb_database} \
-        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.indexes_script.name} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.post_load_prep_script.name} \
         --sql \
         --async \
         --format="value(name)")
       
-      echo "Started indexes creation. Operation: $OPERATION_PATH"
+      echo "Started post-load preparation. Operation: $OPERATION_PATH"
       
       while true; do
-        # Use basename to extract only the operation ID. OPERATION_PATH contains the full resource name,
-        # which causes double-prefixing in the URL when combined with --region.
         DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        
-        # Extract only the JSON part (starting with {) to ignore potential environment noise at the beginning.
         DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
         
-        # If parsing failed (e.g. command failed with non-JSON error), print the output and retry.
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
+# Index 1: fraud_labels btree
+resource "google_storage_bucket_object" "idx_1_script" {
+  name   = "idx_1_fraud_labels_btree.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/idx_1_fraud_labels_btree.sql"
+}
+
+resource "null_resource" "run_idx_1" {
+  depends_on = [
+    null_resource.post_load_prep,
+    google_storage_bucket_object.idx_1_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.idx_1_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started index 1 creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
+# Index 2: transactions scann
+resource "google_storage_bucket_object" "idx_2_script" {
+  name   = "idx_2_transactions_scann.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/idx_2_transactions_scann.sql"
+}
+
+resource "null_resource" "run_idx_2" {
+  depends_on = [
+    null_resource.run_idx_1,
+    google_storage_bucket_object.idx_2_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.idx_2_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started index 2 creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
+# Index 3: sec chunks fts
+resource "google_storage_bucket_object" "idx_3_script" {
+  name   = "idx_3_sec_chunks_fts.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/idx_3_sec_chunks_fts.sql"
+}
+
+resource "null_resource" "run_idx_3" {
+  depends_on = [
+    null_resource.run_idx_2,
+    google_storage_bucket_object.idx_3_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.idx_3_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started index 3 creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
+# Index 4: sec chunks rum
+resource "google_storage_bucket_object" "idx_4_script" {
+  name   = "idx_4_sec_chunks_rum.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/idx_4_sec_chunks_rum.sql"
+}
+
+resource "null_resource" "run_idx_4" {
+  depends_on = [
+    null_resource.run_idx_3,
+    google_storage_bucket_object.idx_4_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.idx_4_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started index 4 creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
+# Index 5: sec chunks scann
+resource "google_storage_bucket_object" "idx_5_script" {
+  name   = "idx_5_sec_chunks_scann.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/idx_5_sec_chunks_scann.sql"
+}
+
+resource "null_resource" "run_idx_5" {
+  depends_on = [
+    null_resource.run_idx_4,
+    google_storage_bucket_object.idx_5_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.idx_5_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started index 5 creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
+# Index 6: sec chunks hnsw
+resource "google_storage_bucket_object" "idx_6_script" {
+  name   = "idx_6_sec_chunks_hnsw.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/idx_6_sec_chunks_hnsw.sql"
+}
+
+resource "null_resource" "run_idx_6" {
+  depends_on = [
+    null_resource.run_idx_5,
+    google_storage_bucket_object.idx_6_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.idx_6_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started index 6 creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
+resource "null_resource" "post_load_prep_final" {
+  depends_on = [
+    null_resource.run_idx_6,
+    google_storage_bucket_object.post_load_prep_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.post_load_prep_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started final post-load preparation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
         if [ -z "$DONE" ]; then
           echo "Warning: Failed to parse operation status. Raw output was:"
           echo "$DESC"
@@ -185,7 +558,7 @@ resource "google_storage_bucket_object" "setup_fdw_script" {
 
 resource "null_resource" "run_setup_fdw" {
   depends_on = [
-    null_resource.run_indexes,
+    null_resource.post_load_prep_final,
     google_storage_bucket_object.setup_fdw_script
   ]
 
