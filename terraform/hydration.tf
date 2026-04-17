@@ -23,6 +23,32 @@ resource "null_resource" "run_extensions" {
   }
 }
 
+resource "google_storage_bucket_object" "create_models_script" {
+  name   = "alloydb-create-models.sql"
+  bucket = google_storage_bucket.text_data.name
+  content = templatefile("${path.module}/../data/alloydb-create-models.sql", {
+    project_id = var.gcp_project_id
+  })
+}
+
+resource "null_resource" "run_create_models" {
+  depends_on = [
+    null_resource.run_extensions,
+    google_storage_bucket_object.create_models_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.create_models_script.name} \
+        --sql
+    EOT
+  }
+}
+
 resource "google_storage_bucket_object" "ddl_script" {
   name   = "alloydb-ddl.sql"
   bucket = google_storage_bucket.text_data.name
@@ -31,7 +57,7 @@ resource "google_storage_bucket_object" "ddl_script" {
 
 resource "null_resource" "run_ddl" {
   depends_on = [
-    null_resource.run_extensions,
+    null_resource.run_create_models,
     google_storage_bucket_object.ddl_script
   ]
 
@@ -85,14 +111,9 @@ resource "null_resource" "import_csv" {
       echo "Started import for ${each.value}. Operation: $OPERATION_PATH"
       
       while true; do
-        # Use basename to extract only the operation ID. OPERATION_PATH contains the full resource name,
-        # which causes double-prefixing in the URL when combined with --region.
         DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        
-        # Extract only the JSON part (starting with {) to ignore potential environment noise at the beginning.
         DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
         
-        # If parsing failed (e.g. command failed with non-JSON error), print the output and retry.
         if [ -z "$DONE" ]; then
           echo "Warning: Failed to parse operation status. Raw output was:"
           echo "$DESC"
@@ -172,7 +193,6 @@ resource "null_resource" "post_load_prep" {
   }
 }
 
-# Index 1: fraud_labels btree
 resource "google_storage_bucket_object" "idx_1_script" {
   name   = "idx_1_fraud_labels_btree.sql"
   bucket = google_storage_bucket.text_data.name
@@ -227,7 +247,6 @@ resource "null_resource" "run_idx_1" {
   }
 }
 
-# Index 2: transactions scann
 resource "google_storage_bucket_object" "idx_2_script" {
   name   = "idx_2_transactions_scann.sql"
   bucket = google_storage_bucket.text_data.name
@@ -282,7 +301,6 @@ resource "null_resource" "run_idx_2" {
   }
 }
 
-# Index 3: sec chunks fts
 resource "google_storage_bucket_object" "idx_3_script" {
   name   = "idx_3_sec_chunks_fts.sql"
   bucket = google_storage_bucket.text_data.name
@@ -337,7 +355,6 @@ resource "null_resource" "run_idx_3" {
   }
 }
 
-# Index 4: sec chunks rum
 resource "google_storage_bucket_object" "idx_4_script" {
   name   = "idx_4_sec_chunks_rum.sql"
   bucket = google_storage_bucket.text_data.name
@@ -392,7 +409,6 @@ resource "null_resource" "run_idx_4" {
   }
 }
 
-# Index 5: sec chunks scann
 resource "google_storage_bucket_object" "idx_5_script" {
   name   = "idx_5_sec_chunks_scann.sql"
   bucket = google_storage_bucket.text_data.name
@@ -447,7 +463,6 @@ resource "null_resource" "run_idx_5" {
   }
 }
 
-# Index 6: sec chunks hnsw
 resource "google_storage_bucket_object" "idx_6_script" {
   name   = "idx_6_sec_chunks_hnsw.sql"
   bucket = google_storage_bucket.text_data.name
@@ -553,7 +568,9 @@ resource "null_resource" "post_load_prep_final" {
 resource "google_storage_bucket_object" "setup_fdw_script" {
   name   = "alloydb-setup-fdw-and-reverse-etl.sql"
   bucket = google_storage_bucket.text_data.name
-  source = "${path.module}/../data/alloydb-setup-fdw-and-reverse-etl.sql"
+  content = templatefile("${path.module}/../data/alloydb-setup-fdw-and-reverse-etl.sql", {
+    project_id = var.gcp_project_id
+  })
 }
 
 resource "null_resource" "run_setup_fdw" {
@@ -569,6 +586,30 @@ resource "null_resource" "run_setup_fdw" {
         --project=${var.gcp_project_id} \
         --database=${var.alloydb_database} \
         --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.setup_fdw_script.name} \
+        --sql
+    EOT
+  }
+}
+
+resource "google_storage_bucket_object" "setup_tqf_script" {
+  name   = "alloydb-setup-tqf.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/alloydb-setup-tqf.sql"
+}
+
+resource "null_resource" "run_setup_tqf" {
+  depends_on = [
+    null_resource.run_setup_fdw,
+    google_storage_bucket_object.setup_tqf_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.setup_tqf_script.name} \
         --sql
     EOT
   }

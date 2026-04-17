@@ -219,10 +219,10 @@ resource "google_alloydb_instance" "primary" {
     },
     var.alloydb_cpu_count == 32 ? {
       # Import optimizations
-      "maintenance_work_mem" = "33554432"
-      "max_wal_size"         = "20480"
-      "checkpoint_timeout"   = "300"
-      "autovacuum"           = "off"
+      "maintenance_work_mem"             = "8388608"
+      "max_wal_size"                     = "20480"
+      "max_parallel_maintenance_workers" = "16"
+      "checkpoint_timeout"               = "1800"
     } : {}
   )
   client_connection_config {
@@ -245,7 +245,7 @@ resource "google_alloydb_instance" "primary" {
 
 resource "null_resource" "alloydb_read_pool" {
   depends_on = [
-    null_resource.run_indexes
+    null_resource.run_idx_6
   ]
 
   triggers = {
@@ -279,8 +279,8 @@ resource "null_resource" "alloydb_read_pool" {
           --enable-autoscaler \
           --autoscaler-max-node-count=${self.triggers.max_node_count} \
           --autoscaler-target-cpu-usage=0.6 \
-          --cpu-count=2 \
-          --machine-type="c4a-highmem-2" \
+          --cpu-count=1 \
+          --machine-type="c4a-highmem-1" \
           --assign-inbound-public-ip=ASSIGN_IPV4 \
           --ssl-mode=ALLOW_UNENCRYPTED_AND_ENCRYPTED \
           --database-flags="google_columnar_engine.enabled=on,google_columnar_engine.enable_vectorized_join=on,google_columnar_engine.enable_index_caching=on,google_ml_integration.enable_model_support=on,google_ml_integration.enable_ai_query_engine=on,password.enforce_complexity=on,password.min_uppercase_letters=1,password.min_numerical_chars=1,password.min_pass_length=10,bigquery_fdw.enabled=on" \
@@ -383,6 +383,34 @@ resource "google_project_iam_member" "project_alloydb_sa_roles" {
   project = data.google_project.project.id
   role    = each.key # 'each.key' refers to the current role in the loop
   member  = local.alloydb_service_account_member
+}
+
+# Grant BigQuery Admin to the specific AlloyDB FDW service account
+resource "google_project_iam_member" "alloydb_fdw_bq_admin" {
+  project = data.google_project.project.id
+  role    = "roles/bigquery.admin"
+  member  = "serviceAccount:c-${data.google_project.project.number}-${split("-", google_alloydb_cluster.default.uid)[0]}@gcp-sa-alloydb.iam.gserviceaccount.com"
+}
+
+# Grant BigQuery User to the specific AlloyDB FDW service account
+resource "google_project_iam_member" "alloydb_fdw_bq_user" {
+  project = data.google_project.project.id
+  role    = "roles/bigquery.user"
+  member  = "serviceAccount:c-${data.google_project.project.number}-${split("-", google_alloydb_cluster.default.uid)[0]}@gcp-sa-alloydb.iam.gserviceaccount.com"
+}
+
+# Grant BigQuery Data Viewer to the specific AlloyDB FDW service account
+resource "google_project_iam_member" "alloydb_fdw_bq_dataviewer" {
+  project = data.google_project.project.id
+  role    = "roles/bigquery.dataViewer"
+  member  = "serviceAccount:c-${data.google_project.project.number}-${split("-", google_alloydb_cluster.default.uid)[0]}@gcp-sa-alloydb.iam.gserviceaccount.com"
+}
+
+# Grant BigQuery Read Session User to the specific AlloyDB FDW service account
+resource "google_project_iam_member" "alloydb_fdw_bq_read_session_user" {
+  project = data.google_project.project.id
+  role    = "roles/bigquery.readSessionUser"
+  member  = "serviceAccount:c-${data.google_project.project.number}-${split("-", google_alloydb_cluster.default.uid)[0]}@gcp-sa-alloydb.iam.gserviceaccount.com"
 }
 
 resource "google_project_iam_member" "compute_sa_storage_admin" {

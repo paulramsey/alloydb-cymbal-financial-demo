@@ -85,3 +85,12 @@ CREATE TABLE IF NOT EXISTS sec_to_iceberg_mapping (
   iceberg_company text
 );
 
+-- Reassign ownership from alloydbsuperuser to postgres
+ALTER TABLE public.fraud_labels OWNER TO postgres;
+ALTER TABLE public.cards OWNER TO postgres;
+ALTER TABLE public.mcc_codes OWNER TO postgres;
+ALTER TABLE public.transactions_25_26 OWNER TO postgres;
+ALTER TABLE public.users OWNER TO postgres;
+ALTER TABLE public.sec_document_chunks OWNER TO postgres;
+ALTER TABLE public.sec_to_iceberg_mapping OWNER TO postgres;
+

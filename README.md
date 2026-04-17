@@ -112,45 +112,20 @@ Before deploying, ensure you have the following:
     *   This will also remove the performance flags, reverting them to database defaults.
 
 ### Verifying Data Import
-After the deployment and data import are complete, you can verify the loaded data by running the row count check script:
-1. Connect to the AlloyDB instance (see instructions below).
-2. Execute the SQL script below to compare your row counts with the expected counts:
+After the deployment and data import are complete, you can verify the loaded data by running the row count check scripts provided in the `data` directory.
 
-```sql
-SELECT 
-    'users' AS table_name, 
-    (SELECT COUNT(*) FROM users) AS imported_count, 
-    2000 AS target_row_count
-UNION ALL
-SELECT 
-    'mcc_codes', 
-    (SELECT COUNT(*) FROM mcc_codes), 
-    109
-UNION ALL
-SELECT 
-    'transactions_25_26', 
-    (SELECT COUNT(*) FROM transactions_25_26), 
-    2678137
-UNION ALL
-SELECT 
-    'fraud_labels', 
-    (SELECT COUNT(*) FROM fraud_labels), 
-    8914963
-UNION ALL
-SELECT 
-    'cards', 
-    (SELECT COUNT(*) FROM cards), 
-    6146
-UNION ALL
-SELECT 
-    'sec_document_chunks', 
-    (SELECT COUNT(*) FROM sec_document_chunks), 
-    3256048
-UNION ALL
-SELECT 
-    'sec_to_iceberg_mapping', 
-    (SELECT COUNT(*) FROM sec_to_iceberg_mapping), 
-    885;
+#### AlloyDB
+1. Connect to the AlloyDB instance (see instructions below).
+2. Execute the SQL script `data/alloydb-row-counts.sql` to compare your row counts with the expected counts. You can run this using `psql`:
+   ```bash
+   psql "host=$DB_HOST user=postgres sslmode=require" -f ../data/alloydb-row-counts.sql
+   ```
+   *(Note: Adjust the path to `../data/...` if you are running from the `terraform` directory or use the appropriate path.)*
+
+#### BigQuery
+You can verify the row counts for the native and external tables in BigQuery by running the `data/bq-row-counts.sql` script in the BigQuery console or via the `bq` CLI:
+```bash
+bq query --use_legacy_sql=false < ../data/bq-row-counts.sql
 ```
 
 ## Connecting to AlloyDB
