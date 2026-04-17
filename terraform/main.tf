@@ -201,7 +201,7 @@ resource "google_alloydb_instance" "primary" {
   availability_type = var.alloydb_availability_type
   machine_config {
     cpu_count = var.alloydb_cpu_count
-    machine_type = "c4a-highmem-${var.alloydb_cpu_count}-lssd"
+    machine_type = var.alloydb_cpu_count > 1 ? "c4a-highmem-${var.alloydb_cpu_count}-lssd" : "c4a-highmem-${var.alloydb_cpu_count}"
   }
   database_flags = merge(
     {

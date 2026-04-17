@@ -167,6 +167,23 @@ After deployment, Terraform will output connectivity details.
     ```
     *(Note: Access is automatically restricted to the IP address from which you ran `terraform apply`.)*
 
+## Pausing and Resuming the Cluster (Cost Savings)
+
+To save costs when the demo is not in use without deleting your data, you can pause the AlloyDB cluster. This is important because the demo requires at least 4 vCPUs for decent performance with over 10 Million rows, which can be expensive if left running.
+
+We provide two scripts in the `operations/` directory for this purpose:
+
+1.  **Pause Cluster**: Stops the read pool instance first, followed by the primary instance.
+    ```bash
+    ./operations/pause-cluster.sh
+    ```
+2.  **Start Cluster**: Starts the primary instance first, followed by the read pool instance.
+    ```bash
+    ./operations/start-cluster.sh
+    ```
+
+These scripts dynamically resolve the project, region, and cluster ID from Terraform output and use `--activation-policy` to stop and start the instances. They also include polling to ensure operations complete in the correct order.
+
 ## Clean Up
 
 When you are finished with the environment, **delete the project** to ensure all resources are destroyed and you stop incurring charges.

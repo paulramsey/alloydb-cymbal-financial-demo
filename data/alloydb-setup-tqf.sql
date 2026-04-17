@@ -16,4 +16,3 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-cik, ticker
