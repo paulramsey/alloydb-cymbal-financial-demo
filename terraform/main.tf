@@ -216,11 +216,12 @@ resource "google_alloydb_instance" "primary" {
       "password.min_pass_length"                      = "10"
       "bigquery_fdw.enabled"                          = "on"
       "alloydb.enable_pg_cron"                        = "on"
+      "checkpoint_completion_target"                  = "0.9"
     },
     var.alloydb_cpu_count == 32 ? {
       # Import optimizations
       "maintenance_work_mem"             = "8388608"
-      "max_wal_size"                     = "20480"
+      "max_wal_size"                     = "65536"
       "max_parallel_maintenance_workers" = "16"
       "checkpoint_timeout"               = "1800"
     } : {}

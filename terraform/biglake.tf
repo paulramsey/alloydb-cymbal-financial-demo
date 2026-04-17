@@ -14,6 +14,12 @@ resource "google_storage_bucket_iam_member" "biglake_connection_gcs_viewer" {
   member = "serviceAccount:${google_bigquery_connection.biglake_connection.cloud_resource[0].service_account_id}"
 }
 
+resource "google_storage_bucket_iam_member" "biglake_connection_bq_data_viewer" {
+  bucket = google_storage_bucket.bq_data.name
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_bigquery_connection.biglake_connection.cloud_resource[0].service_account_id}"
+}
+
 output "biglake_connection_id" {
   value = google_bigquery_connection.biglake_connection.id
 }

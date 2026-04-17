@@ -16,6 +16,4 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
--- Reassign ownership from alloydbsuperuser to postgres
-ALTER FUNCTION g_instance_type() OWNER TO postgres;
+cik, ticker

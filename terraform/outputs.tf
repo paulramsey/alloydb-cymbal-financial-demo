@@ -48,4 +48,9 @@ output "gcs_bucket_name" {
 #   value       = data.google_alloydb_instance.read_pool.ip_address
 # }
 
+output "cloud_run_url" {
+  description = "The URL of the Cloud Run service."
+  value       = google_cloud_run_v2_service.unified_app.uri
+}
+
 

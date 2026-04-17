@@ -11,6 +11,7 @@ FOREIGN DATA WRAPPER bigquery_fdw;
 
 -- Create User Mapping for postgres user
 CREATE USER MAPPING IF NOT EXISTS FOR postgres SERVER bq_server;
+CREATE USER MAPPING IF NOT EXISTS FOR alloydbsuperuser SERVER bq_server;
 
 -- Create Foreign Table
 CREATE FOREIGN TABLE IF NOT EXISTS public.ext_stock_metadata (
@@ -217,12 +218,3 @@ SELECT cron.schedule(
     WHERE fy = 2025 AND fp = 'FY';$$
 );
 
--- Reassign ownership from alloydbsuperuser to postgres
-ALTER SERVER "bq_server" OWNER TO postgres;
-ALTER FOREIGN TABLE public.ext_stock_metadata OWNER TO postgres;
-ALTER FOREIGN TABLE public.ext_sec_10k_iceberg OWNER TO postgres;
-ALTER FOREIGN TABLE public.ext_company_concepts OWNER TO postgres;
-ALTER FOREIGN TABLE public.ext_company_tickers OWNER TO postgres;
-ALTER FOREIGN TABLE public.ext_sec_13f_holdings OWNER TO postgres;
-ALTER TABLE public.retl_company_concepts OWNER TO postgres;
-ALTER TABLE public.retl_company_tickers OWNER TO postgres;

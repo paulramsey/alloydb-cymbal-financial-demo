@@ -15,6 +15,8 @@ resource "google_bigquery_table" "stock_metadata" {
   project    = var.gcp_project_id
   deletion_protection = false
 
+  clustering = ["iceberg_company_name", "Symbol"]
+
   schema = <<EOF
 [
   {"name": "Nasdaq_Traded", "type": "STRING"},
@@ -39,6 +41,16 @@ resource "google_bigquery_table" "company_concepts" {
   table_id   = "company_concepts"
   project    = var.gcp_project_id
   deletion_protection = false
+
+  range_partitioning {
+    field = "fy"
+    range {
+      start    = 2000
+      end      = 2100
+      interval = 1
+    }
+  }
+  clustering = ["fp", "cik", "tag"]
 
   schema = <<EOF
 [
@@ -93,6 +105,8 @@ resource "google_bigquery_table" "company_tickers" {
   project    = var.gcp_project_id
   deletion_protection = false
 
+  clustering = ["cik", "ticker"]
+
   schema = <<EOF
 [
   {"name": "cik", "type": "INT64"},
@@ -102,38 +116,59 @@ resource "google_bigquery_table" "company_tickers" {
 EOF
 }
 
-resource "google_bigquery_table" "currency_exchange_rates" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "currency_exchange_rates"
-  project    = var.gcp_project_id
-  deletion_protection = false
+# Using bq query instead of a terraform resource here due to issues
+# with clustering not supported by Terraform for external tables
+# (but it is supported by the API).
 
-  schema = <<EOF
-[
-  {"name": "Date", "type": "TIMESTAMP"},
-  {"name": "From_Currency", "type": "STRING"},
-  {"name": "To_Currency", "type": "STRING"},
-  {"name": "Rate", "type": "FLOAT64"}
-]
+resource "null_resource" "create_sec_10k_iceberg" {
+  depends_on = [null_resource.copy_bq_data]
+
+  triggers = {
+    query_hash = sha256(<<EOF
+CREATE EXTERNAL TABLE IF NOT EXISTS cymbal_reference.temp_sec_10k
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['gs://cymbal-bq-data-${var.gcp_project_id}/sec_10k_iceberg/sec_10k_iceberg/data/*.parquet']
+);
+
+CREATE TABLE IF NOT EXISTS cymbal_reference.sec_10k_iceberg
+CLUSTER BY company
+WITH CONNECTION \`projects/${var.gcp_project_id}/locations/${var.region}/connections/biglake_connection\`
+OPTIONS (
+  file_format = 'PARQUET',
+  table_format = 'ICEBERG',
+  storage_uri = 'gs://cymbal-bq-data-${var.gcp_project_id}/iceberg-data/sec_10k_iceberg/'
+)
+AS SELECT * FROM cymbal_reference.temp_sec_10k;
+
+DROP TABLE IF EXISTS cymbal_reference.temp_sec_10k;
 EOF
-
-  time_partitioning {
-    type  = "DAY"
-    field = "Date"
+    )
   }
-}
 
-resource "google_bigquery_table" "sec_10k_iceberg" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "sec_10k_iceberg"
-  project    = var.gcp_project_id
-  deletion_protection = false
+  provisioner "local-exec" {
+    command = <<EOF
+bq rm -f --project_id=${var.gcp_project_id} cymbal_reference.sec_10k_iceberg || true
+bq query --project_id=${var.gcp_project_id} --use_legacy_sql=false "
+CREATE EXTERNAL TABLE IF NOT EXISTS cymbal_reference.temp_sec_10k
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['gs://cymbal-bq-data-${var.gcp_project_id}/sec_10k_iceberg/sec_10k_iceberg/data/*.parquet']
+);
 
-  external_data_configuration {
-    autodetect    = true
-    source_format = "PARQUET"
-    source_uris   = ["${var.bigquery_import_bucket_uri}/sec_10k_iceberg/sec_10k_iceberg/data/*.parquet"]
-    connection_id = "projects/${var.gcp_project_id}/locations/${var.region}/connections/biglake_connection"
+CREATE TABLE IF NOT EXISTS cymbal_reference.sec_10k_iceberg
+CLUSTER BY company
+WITH CONNECTION \`projects/${var.gcp_project_id}/locations/${var.region}/connections/biglake_connection\`
+OPTIONS (
+  file_format = 'PARQUET',
+  table_format = 'ICEBERG',
+  storage_uri = 'gs://cymbal-bq-data-${var.gcp_project_id}/iceberg-data/sec_10k_iceberg/'
+)
+AS SELECT * FROM cymbal_reference.temp_sec_10k;
+
+DROP TABLE IF EXISTS cymbal_reference.temp_sec_10k;
+"
+EOF
   }
 }
 
@@ -144,6 +179,8 @@ resource "google_bigquery_table" "sec_13f_holdings" {
   table_id   = "sec_13f_holdings"
   project    = var.gcp_project_id
   deletion_protection = false
+
+  clustering = ["ticker", "manager_name"]
 
   schema = <<EOF
 [
@@ -167,7 +204,7 @@ resource "google_bigquery_table" "vw_stock_10k_holdings" {
   table_id   = "vw_stock_10k_holdings"
   project    = var.gcp_project_id
   deletion_protection = false
-  depends_on = [google_bigquery_table.sec_10k_iceberg, google_bigquery_table.stock_metadata]
+  depends_on = [null_resource.create_sec_10k_iceberg, google_bigquery_table.stock_metadata]
 
   view {
     query = <<EOF

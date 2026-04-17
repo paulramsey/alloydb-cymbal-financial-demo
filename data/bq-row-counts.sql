@@ -23,11 +23,6 @@ SELECT
     10426
 UNION ALL
 SELECT 
-    'currency_exchange_rates', 
-    (SELECT COUNT(*) FROM `cymbal_reference.currency_exchange_rates`), 
-    12382
-UNION ALL
-SELECT 
     'sec_10k_iceberg', 
     (SELECT COUNT(*) FROM `cymbal_reference.sec_10k_iceberg`), 
     6282
