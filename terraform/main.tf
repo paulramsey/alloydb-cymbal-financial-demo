@@ -434,39 +434,6 @@ resource "google_project_iam_member" "compute_sa_logging" {
 
 # --- END: Section for assigning permissions to the AlloyDB service account ---
 
-# Create a Test VM to verify connectivity
-resource "google_compute_instance" "test_vm" {
-  name                      = "alloydb-test-vm"
-  machine_type              = "e2-standard-2"
-  zone                      = "${var.region}-a"
-  project                   = var.gcp_project_id
-  allow_stopping_for_update = true
-
-  boot_disk {
-    initialize_params {
-      image = "debian-cloud/debian-11"
-    }
-  }
-
-  network_interface {
-    network    = google_compute_network.demo_vpc.id
-    subnetwork = "projects/${var.gcp_project_id}/regions/${var.region}/subnetworks/demo-vpc"
-  }
-
-  service_account {
-    scopes = ["cloud-platform"]
-  }
-
-  metadata_startup_script = "apt-get update && apt-get install -y postgresql-client"
-
-  shielded_instance_config {
-    enable_secure_boot          = true
-    enable_vtpm                 = true
-    enable_integrity_monitoring = true
-  }
-
-  depends_on = [google_project_service.apis]
-}
 
 
 

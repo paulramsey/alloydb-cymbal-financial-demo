@@ -13,15 +13,6 @@ output "alloydb_private_ip" {
   value       = google_alloydb_instance.primary.ip_address
 }
 
-output "test_vm_name" {
-  description = "The name of the Test VM."
-  value       = google_compute_instance.test_vm.name
-}
-
-output "test_vm_zone" {
-  description = "The zone of the Test VM."
-  value       = google_compute_instance.test_vm.zone
-}
 
 output "alloydb_public_ip" {
   description = "The Public IP address of the AlloyDB instance."
