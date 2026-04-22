@@ -134,6 +134,7 @@ Before deploying, ensure you have the following:
     ```
     *   Type `yes` when prompted.
     *   Deployment typically takes up to 2 hours end-to-end, as it loads millions of records and builds very large indexes (ScaNN, HNSW, GIN, and RUM).
+    *   **Pro Tip for Mac Users**: Since this takes around 2 hours, if you lock your computer or it goes to sleep, the process might be interrupted. You can use `caffeinate` to keep your Mac awake. Simply open a new terminal and run `caffeinate` while `terraform apply` is running in the other terminal (and be sure to stop the `caffeinate` process when `terraform` completes by pressing `Ctrl+C`).
     *   Setting `alloydb_cpu_count=32` will also apply aggressive performance database flags (like `maintenance_work_mem` and `max_wal_size`) tailored for large imports.
 
 6.  **Scale Down to 4 vCPUs**:

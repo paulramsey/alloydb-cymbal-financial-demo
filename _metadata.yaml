@@ -42,6 +42,5 @@ industries:
 products:
   - alloydb
   - alloydb_for_postgresql
-  - vertex_ai
-  - cloud_run
   - bigquery
+  - biglake_api

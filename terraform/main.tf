@@ -224,6 +224,9 @@ resource "google_alloydb_instance" "primary" {
       "max_wal_size"                     = "65536"
       "max_parallel_maintenance_workers" = "16"
       "checkpoint_timeout"               = "1800"
+    } : {},
+    var.alloydb_cpu_count == 4 ? {
+      "google_columnar_engine.memory_size_in_mb" = "12800"
     } : {}
   )
   client_connection_config {
