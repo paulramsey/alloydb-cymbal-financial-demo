@@ -7,6 +7,14 @@ This repository contains Terraform code to deploy a fully configured **Google Cl
 *   **Hybrid Search**: Combines keyword precision with semantic depth using Google's ScaNN algorithm and Supercharged HNSW with Columnar Engine acceleration, scaling up to 10B+ vectors. Supports native GIN indexing, the RUM extension for full-text performance, and future native BM25. Provides seamless reranking with Reciprocal Rank Fusion (RRF) and Vertex AI models (or bring your own model).
 *   **Real-Time Fraud Detection**: Leverages vector search for anomaly detection in high-velocity transaction streams and enhances recall with Gemini's reasoning via the `ai.if()` function.
 
+| Fraud Detection | Hybrid Search |
+| :---: | :---: |
+| ![Fraud Detection](img/fraud-detection.png) | ![Hybrid Search](img/hybrid-search.png) |
+
+| Lakehouse Federation | Transparent Query Forwarding |
+| :---: | :---: |
+| ![Lakehouse Federation](img/lakehouse-federation.png) | ![Transparent Query Forwarding](img/transparent-query-forwarding.png) |
+
 ## Application Stack
 
 *   **Backend**: A **FastAPI** application serving search, analysis, and fraud detection APIs, demonstrating native in-database AI execution and array-based processing.
