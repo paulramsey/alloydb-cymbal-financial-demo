@@ -1,0 +1,47 @@
+file_type: demo
+
+type: application
+
+title: AlloyDB Demo - Cymbal Financial Services
+
+thumbnail_summary: A platform for a fictional investment firm demonstrating advanced AlloyDB capabilities.
+
+purpose: Demonstrates advanced AlloyDB capabilities including Transparent Query Forwarding, Lakehouse Federation, Hybrid Search, and Real-Time Fraud Detection for financial services.
+
+business_value: Enables financial services developers to build intelligent, state-of-the-art applications using AlloyDB.
+
+technical_value: Showcases Transparent Query Forwarding, Lakehouse Federation, Hybrid Search (ScaNN, HNSW), and Fraud Detection.
+
+owner: paulramsey
+
+contributors:
+  - paulramsey
+
+channel_id: 17
+
+images:
+  - https://github.com/paulramsey/alloydb-cymbal-financial-demo/raw/main/img/hybrid-search.png
+  - https://github.com/paulramsey/alloydb-cymbal-financial-demo/raw/main/img/fraud-detection.png
+  - https://github.com/paulramsey/alloydb-cymbal-financial-demo/raw/main/img/lakehouse-federation.png
+  - https://github.com/paulramsey/alloydb-cymbal-financial-demo/raw/main/img/transparent-query-forwarding.png
+
+
+demo_guide: https://github.com/paulramsey/alloydb-cymbal-financial-demo/blob/main/demo/walkthrough.md
+
+artifacts:
+  - title: Source Code Repository
+    type: code_repo
+    link: https://github.com/paulramsey/alloydb-cymbal-financial-demo
+
+featured_artifact_title: Source Code Repository
+
+industries:
+  - financial_services
+  - all
+
+products:
+  - alloydb
+  - alloydb_for_postgresql
+  - vertex_ai
+  - cloud_run
+  - bigquery
