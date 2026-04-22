@@ -2109,7 +2109,7 @@ function App() {
               {lakehouseTab === 'advanced' ? (
                 <>Running vector search on <strong>AlloyDB</strong> and filtering with <strong>Lakehouse Federation</strong></>
               ) : (
-                <>Loading data from <strong>BigLake Tables for Apache Iceberg</strong>...</>
+                <>Loading data from <strong>Google Cloud Lakehouse Tables for Apache Iceberg</strong>...</>
               )}
             </div>
           ) : lakehouseResults.length > 0 ? (
@@ -2967,7 +2967,7 @@ LIMIT 5;`}
             {loadingLakehouseDetails ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', gap: '0.5rem' }}>
                 <div className="spinner"></div>
-                <span>Loading BigLake & Iceberg details...</span>
+                <span>Loading Google Cloud Lakehouse & Iceberg details...</span>
               </div>
             ) : lakehouseDetailsData ? (
               expandedItem ? (

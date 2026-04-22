@@ -172,7 +172,7 @@ EOF
   }
 }
 
-# BigLake Table (External with Connection)
+# Google Cloud Lakehouse Table (External with Connection)
 
 resource "google_bigquery_table" "sec_13f_holdings" {
   dataset_id = google_bigquery_dataset.reference_data.dataset_id

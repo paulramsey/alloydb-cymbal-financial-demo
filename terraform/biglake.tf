@@ -2,8 +2,8 @@ resource "google_bigquery_connection" "biglake_connection" {
   connection_id = "biglake_connection"
   project       = var.gcp_project_id
   location      = var.region
-  friendly_name = "BigLake Connection"
-  description   = "Connection for BigLake Iceberg tables accessing GCS"
+  friendly_name = "Google Cloud Lakehouse Connection"
+  description   = "Connection for Google Cloud Lakehouse Iceberg tables accessing GCS"
 
   cloud_resource {}
 }

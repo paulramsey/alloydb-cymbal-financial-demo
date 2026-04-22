@@ -54,7 +54,7 @@ This document summarizes the real-world datasets loaded into the Cymbal Investme
 -   **Description:** Inline modal chart displaying market data for selected tickers within the search results.
 -   **Usage Rights:** **Free to use** with attribution. TradingView allows embedding their widgets for free on public and private sites, making them suitable for demonstration purposes, provided the branding is not removed.
 
-### **SEC 10-K Historical Analytics (BigLake Iceberg)**
+### **SEC 10-K Historical Analytics (Google Cloud Lakehouse Iceberg)**
 -   **Source:** Aggregated S&P 500 financial features derived from [Hugging Face (jlohding/sp500-edgar-10k)](https://huggingface.co/datasets/jlohding/sp500-edgar-10k).
 -   **Description:** Cleaned tabular representation of SEC 10-K filings (Years 2010-2022) with text items and financial return features, managed in Apache Iceberg format directly over Cloud Storage.
 -   **Volume:** **6,282 rows** supporting ACID-compliant warehouse analytics and time travel.

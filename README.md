@@ -1,38 +1,40 @@
 # AlloyDB AI Cymbal Financial Services Demo
 
-This repository contains Terraform code to deploy a fully configured **Google Cloud AlloyDB** environment and a complete **Financial Services Demo Application**. The infrastructure includes advanced features like **AlloyDB AI** and the **Columnar Engine**.
-
-It also sets up a complete network infrastructure using **Private Service Access (PSA)** and a Test VM.
-
-## Demo Application Overview
-
-This demo showcases a financial platform for a fictional investment firm, **Cymbal Investments**. It demonstrates advanced AlloyDB capabilities for high-frequency trading workloads, SEC filing analysis, and real-time fraud detection.
-
-### Key Features Demonstrated
+This repository contains Terraform code to deploy a fully configured **Google Cloud AlloyDB** environment and a complete **Financial Services Demo Application**. The demo showcases a financial platform for a fictional investment firm, **Cymbal Investments**. It demonstrates several new advanced AlloyDB capabilities launched at Google Cloud Next '26, including:
 
 *   **Transparent Query Forwarding (TQF)**: Automatically reroutes expensive read queries from the primary instance to the read pool without application code changes, ensuring read-after-write consistency and low latency for mission-critical writes.
 *   **Lakehouse Federation**: Unifies live transactional data with historical archives in BigQuery and Apache Iceberg (parquet), allowing direct queries across the entire data platform through a single lens.
 *   **Hybrid Search**: Combines keyword precision with semantic depth using Google's ScaNN algorithm and Supercharged HNSW with Columnar Engine acceleration, scaling up to 10B+ vectors. Supports native GIN indexing, the RUM extension for full-text performance, and future native BM25. Provides seamless reranking with Reciprocal Rank Fusion (RRF) and Vertex AI models (or bring your own model).
 *   **Real-Time Fraud Detection**: Leverages vector search for anomaly detection in high-velocity transaction streams and enhances recall with Gemini's reasoning via the `ai.if()` function.
 
-### Application Stack
+## Application Stack
 
 *   **Backend**: A **FastAPI** application serving search, analysis, and fraud detection APIs, demonstrating native in-database AI execution and array-based processing.
 *   **Frontend**: A **Vite-based React** application providing interfaces for TQF simulation, Hybrid Search, and Fraud Detection visualization.
 
 
-## Features Deployed
+## Infrastructure Deployed
 
-*   **AlloyDB Cluster & Instance**:
-    *   **AlloyDB AI**: Enabled (`google_ml_integration.enable_model_support`).
-    *   **Columnar Engine**: Enabled (`google_columnar_engine.enabled`) for analytical performance.
-    *   **High Availability**: Configured (Zonal/Regional as defined in `variables.tf`).
+*   **AlloyDB Cluster & Instances**:
+    *   **Primary Instance**: With **AlloyDB AI** (`google_ml_integration.enable_model_support`) and **Columnar Engine** (`google_columnar_engine.enabled`) enabled.
+    *   **Autoscaling Read Pool**: 1-2 nodes for Transparent Query Forwarding.
+    *   **Database Flags**: Columnar Cache, Vectorized Joins, BigQuery Federation (FDW), and dynamic Performance Import flags. 
 *   **Networking**:
     *   **VPC**: A dedicated VPC (`demo-vpc`) for the environment.
     *   **Private Service Access (PSA)**: Secure private connectivity via VPC peering.
-    *   **Public IP**: Optional public access restricted to your IP address.
-*   **Testing**:
-    *   **Test VM**: A Compute Engine instance (`test-vm`) compliant with Shielded VM policies, pre-loaded with `postgresql-client` for connectivity testing.
+    *   **Cloud NAT & Router**: Secure egress traffic from the VPC.
+    *   **Public IP**: Authorized public access for the Primary and Read Pool instances restricted to your current IP address.
+*   **BigQuery & Google Cloud Lakehouse Data Platform**:
+    *   **Dataset**: `cymbal_reference`.
+    *   **Native Data Tables**: Stock metadata, company tickers, facts, and concepts.
+    *   **Google Cloud Lakehouse Iceberg Table**: `sec_10k_iceberg` federating parquet files stored in Cloud Storage. 
+*   **Application Hosting**:
+    *   **Cloud Run**: A unified FastAPI backend and React frontend app securely attached to the VPC network.
+    *   **Artifact Registry**: Docker image repository for the Cloud Run unified application.
+*   **Storage & Secrets**:
+    *   **GCS Buckets**: Buckets for text and tabular data (`cymbal-text-data-`, `cymbal-bq-data-`).
+    *   **Secret Manager**: A securely created secret for the AlloyDB cluster password.
+
 
 ## Prerequisites
 
@@ -132,30 +134,7 @@ bq query --use_legacy_sql=false < ../data/bq-row-counts.sql
 
 After deployment, Terraform will output connectivity details.
 
-### Option 1: From the Test VM (Private)
-
-1.  **Copy the AlloyDB Private IP to the Test VM**:
-    Run this from your **local machine** (where you ran Terraform):
-    ```bash
-    # Save the IP to a file
-    terraform output -raw alloydb_private_ip > alloydb_private_ip.txt
-
-    # Copy the file to the VM
-    gcloud compute scp alloydb_private_ip.txt $(terraform output -raw test_vm_name):/tmp/alloydb_private_ip.txt --zone $(terraform output -raw test_vm_zone)
-    ```
-
-2.  **SSH into the Test VM**:
-    ```bash
-    gcloud compute ssh $(terraform output -raw test_vm_name) --zone $(terraform output -raw test_vm_zone)
-    ```
-
-3.  **Connect using Private IP**:
-    From **inside the VM**:
-    ```bash
-    psql "host=$(cat /tmp/alloydb_private_ip.txt) user=postgres sslmode=require"
-    ```
-
-### Option 2: From your Local Machine (Public)
+### From your Local Machine (Public)
 1.  **Get the Public IP**:
     ```bash
     terraform output alloydb_public_ip
@@ -166,6 +145,7 @@ After deployment, Terraform will output connectivity details.
     psql "host=$DB_HOST user=postgres sslmode=require"
     ```
     *(Note: Access is automatically restricted to the IP address from which you ran `terraform apply`.)*
+
 
 ## Pausing and Resuming the Cluster (Cost Savings)
 
