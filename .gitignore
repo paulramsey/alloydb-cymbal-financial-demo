@@ -68,3 +68,6 @@ __pycache__/
 scratch/
 
 data/companyfacts/*
+
+# Terraform generated files
+terraform/schema.json

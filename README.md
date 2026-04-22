@@ -44,6 +44,12 @@ Before deploying, ensure you have the following:
     *   Create a NEW project (recommended to avoid conflicts).
     *   Enable **Billing** for the project.
     
+    **Option A: Via Google Cloud Console**
+    *   Go to the [Manage resources page](https://console.cloud.google.com/iam-admin/projects) in the console and click **Create Project**.
+    *   Enter your project details and click **Create**.
+    *   Ensure billing is linked in the [Billing Console](https://console.cloud.google.com/billing).
+
+    **Option B: Via gcloud CLI**
     ```bash
     # Create project
     gcloud projects create YOUR_PROJECT_ID
@@ -77,9 +83,11 @@ Before deploying, ensure you have the following:
     ```
 
 3.  **Configure Variables**:
-    *   Rename the sample file `terraform.tfvars.example` to `terraform.tfvars`.
-    *   Update the first four variables in `terraform.tfvars` to match your environment.
-    *   *(Note: `terraform.tfvars` is excluded in `.gitignore` to ensure sensitive information like passwords are not committed to Git.)*
+    *   Copy the sample file `terraform.tfvars.example` to `terraform.tfvars`:
+    ```bash
+    cp terraform.tfvars.example terraform.tfvars
+    ```
+    *   **IMPORTANT**: Update the first four variables in `terraform.tfvars` to match your environment.
     
     ```hcl
     # terraform.tfvars
@@ -96,7 +104,7 @@ Before deploying, ensure you have the following:
     ```
 
 5.  **Apply the Configuration (High CPU for Fast Import)**:
-    To maximize performance during the large data import (~72GB) and index builds, it is recommended to initially deploy the instance with 32 vCPUs.
+    To maximize performance during the large data import (~72GB) and index builds, it is recommended to initially deploy the instance with 32 vCPUs. You will size this down later for cost savings.
     
     Run `terraform apply` overriding the CPU count:
     ```bash
@@ -104,7 +112,7 @@ Before deploying, ensure you have the following:
     ```
     *   Type `yes` when prompted.
     *   Deployment typically takes up to 2 hours end-to-end, as it loads millions of records and builds very large indexes (ScaNN, HNSW, GIN, and RUM).
-    *   This will also apply aggressive performance database flags (like `maintenance_work_mem` and `max_wal_size`) tailored for large imports.
+    *   Setting `alloydb_cpu_count=32` will also apply aggressive performance database flags (like `maintenance_work_mem` and `max_wal_size`) tailored for large imports.
 
 6.  **Scale Down to 4 vCPUs**:
     Once the import and indexing are complete, run `terraform apply` without the override to revert to the default of 4 vCPUs (assuming you have `alloydb_cpu_count = 4` or left it at default in your `terraform.tfvars`):
@@ -120,7 +128,7 @@ After the deployment and data import are complete, you can verify the loaded dat
 1. Connect to the AlloyDB instance (see instructions below).
 2. Execute the SQL script `data/alloydb-row-counts.sql` to compare your row counts with the expected counts. You can run this using `psql`:
    ```bash
-   psql "host=$DB_HOST user=postgres sslmode=require" -f ../data/alloydb-row-counts.sql
+   psql "host=$(terraform output -raw alloydb_public_ip) user=postgres sslmode=require" -f ../data/alloydb-row-counts.sql
    ```
    *(Note: Adjust the path to `../data/...` if you are running from the `terraform` directory or use the appropriate path.)*
 
@@ -130,21 +138,29 @@ You can verify the row counts for the native and external tables in BigQuery by 
 bq query --use_legacy_sql=false < ../data/bq-row-counts.sql
 ```
 
+## Accessing the Demo Application
+
+After the deployment is complete, you can access the web interface of the Financial Services Demo Application.
+
+1. **Get the Cloud Run URL**:
+   ```bash
+   terraform output -raw cloud_run_url
+   ```
+2. **Navigate to the Interface**:
+   Open the URL returned by the command in your web browser.
+3. **Run the Walkthrough**:
+   Follow the step-by-step guide in [walkthrough.md](./demo/walkthrough.md) to explore the features in the demo interface.
+
 ## Connecting to AlloyDB
 
 After deployment, Terraform will output connectivity details.
 
 ### From your Local Machine (Public)
-1.  **Get the Public IP**:
-    ```bash
-    terraform output alloydb_public_ip
-    ```
-2.  **Connect**:
-    ```bash
-    export DB_HOST=$(terraform output -raw alloydb_public_ip)
-    psql "host=$DB_HOST user=postgres sslmode=require"
-    ```
-    *(Note: Access is automatically restricted to the IP address from which you ran `terraform apply`.)*
+Connect using `psql` with the public IP resolved dynamically from Terraform outputs:
+```bash
+psql "host=$(terraform output -raw alloydb_public_ip) user=postgres sslmode=require"
+```
+*(Note: Access is automatically restricted to the IP address from which you ran `terraform apply`.)*
 
 
 ## Pausing and Resuming the Cluster (Cost Savings)
