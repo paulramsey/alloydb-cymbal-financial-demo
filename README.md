@@ -7,6 +7,10 @@ This repository contains Terraform code to deploy a fully configured **Google Cl
 *   **Hybrid Search**: Combines keyword precision with semantic depth using Google's ScaNN algorithm and Supercharged HNSW with Columnar Engine acceleration, scaling up to 10B+ vectors. Supports native GIN indexing, the RUM extension for full-text performance, and future native BM25. Provides seamless reranking with Reciprocal Rank Fusion (RRF) and Vertex AI models (or bring your own model).
 *   **Real-Time Fraud Detection**: Leverages vector search for anomaly detection in high-velocity transaction streams and enhances recall with Gemini's reasoning via the `ai.if()` function.
 
+## Screenshots
+
+Here is a preview of what you will see when you deploy and run the demo application. Click to expand images.
+
 | Fraud Detection | Hybrid Search |
 | :---: | :---: |
 | ![Fraud Detection](img/fraud-detection.png) | ![Hybrid Search](img/hybrid-search.png) |
@@ -173,7 +177,7 @@ psql "host=$(terraform output -raw alloydb_public_ip) user=postgres sslmode=requ
 
 ## Pausing and Resuming the Cluster (Cost Savings)
 
-To save costs when the demo is not in use without deleting your data, you can pause the AlloyDB cluster. This is important because the demo requires at least 4 vCPUs for decent performance with over 10 Million rows, which can be expensive if left running.
+To save costs when the demo is not in use without deleting your data, you can pause the AlloyDB cluster. This is important because the demo requires at least 4 vCPUs for decent performance with over 10 Million rows, which can be expensive for an idle demo environment if left running.
 
 We provide two scripts in the `operations/` directory for this purpose:
 
