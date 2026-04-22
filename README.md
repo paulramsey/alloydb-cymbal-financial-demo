@@ -25,6 +25,16 @@ Here is a preview of what you will see when you deploy and run the demo applicat
 *   **Frontend**: A **Vite-based React** application providing interfaces for TQF simulation, Hybrid Search, and Fraud Detection visualization.
 
 
+## Demo Data
+
+The demo uses real-world financial datasets to provide a realistic experience, including:
+*   **SEC Form 13F Holdings**: Institutional manager equity holdings.
+*   **SEC 10-K Filings**: Narrative text, extracted risk factors, and semantic vector embeddings.
+*   **Market Data**: Stock metadata, historical currency exchange rates, and SEC EDGAR company facts/concepts.
+
+For full details on data sources, volumes, and usage rights, please refer to the [Data Summary](./data/README.md).
+
+
 ## Infrastructure Deployed
 
 *   **AlloyDB Cluster & Instances**:
