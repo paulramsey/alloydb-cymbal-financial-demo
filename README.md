@@ -1,4 +1,4 @@
-# AlloyDB AI Cymbal Financial Services Demo
+# AlloyDB Demo - Cymbal Financial Services 
 
 This repository contains Terraform code to deploy a fully configured **Google Cloud AlloyDB** environment and a complete **Financial Services Demo Application**. The demo showcases a financial platform for a fictional investment firm, **Cymbal Investments**. It demonstrates several new advanced AlloyDB capabilities launched at Google Cloud Next '26, including:
 
