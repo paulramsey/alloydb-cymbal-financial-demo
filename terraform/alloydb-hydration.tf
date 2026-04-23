@@ -859,6 +859,60 @@ resource "null_resource" "post_load_prep_final" {
   }
 }
 
+resource "google_storage_bucket_object" "alloydb_pin_hnsw_script" {
+  name   = "alloydb-pin-hnsw.sql"
+  bucket = google_storage_bucket.text_data.name
+  source = "${path.module}/../data/alloydb-pin-hnsw.sql"
+}
+
+resource "null_resource" "run_alloydb_pin_hnsw" {
+  depends_on = [
+    null_resource.post_load_prep_final,
+    google_storage_bucket_object.alloydb_pin_hnsw_script
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      OPERATION_PATH=$(gcloud alloydb clusters import ${var.alloydb_cluster_id} \
+        --region=${var.region} \
+        --project=${var.gcp_project_id} \
+        --database=${var.alloydb_database} \
+        --gcs-uri=gs://${google_storage_bucket.text_data.name}/${google_storage_bucket_object.alloydb_pin_hnsw_script.name} \
+        --sql \
+        --async \
+        --format="value(name)")
+      
+      echo "Started pin HNSW index creation. Operation: $OPERATION_PATH"
+      
+      while true; do
+        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
+        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        
+        if [ -z "$DONE" ]; then
+          echo "Warning: Failed to parse operation status. Raw output was:"
+          echo "$DESC"
+          echo "Retrying..."
+          sleep 10
+          continue
+        fi
+        
+        if [ "$DONE" = "true" ]; then
+          ERROR=$(echo $DESC | jq -r '.error')
+          if [ "$ERROR" != "null" ]; then
+            echo "Operation failed: $ERROR"
+            exit 1
+          fi
+          echo "Operation completed successfully."
+          break
+        fi
+        
+        echo "Waiting for operation to complete..."
+        sleep 30
+      done
+    EOT
+  }
+}
+
 resource "google_storage_bucket_object" "setup_fdw_script" {
   name   = "alloydb-setup-fdw-and-reverse-etl.sql"
   bucket = google_storage_bucket.text_data.name
@@ -869,7 +923,7 @@ resource "google_storage_bucket_object" "setup_fdw_script" {
 
 resource "null_resource" "run_setup_fdw" {
   depends_on = [
-    null_resource.post_load_prep_final,
+    null_resource.run_alloydb_pin_hnsw,
     google_storage_bucket_object.setup_fdw_script
   ]
 

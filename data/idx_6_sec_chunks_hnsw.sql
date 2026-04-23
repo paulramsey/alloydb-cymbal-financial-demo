@@ -1,2 +1,1 @@
 CREATE INDEX IF NOT EXISTS idx_sec_chunks_hnsw ON public.sec_document_chunks USING hnsw (embedding_hnsw vector_cosine_ops) WITH (m='16', ef_construction='64');
-SELECT google_columnar_engine_add_index(index => 'idx_sec_chunks_hnsw');
