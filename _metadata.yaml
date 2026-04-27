@@ -32,8 +32,22 @@ artifacts:
   - title: Source Code Repository
     type: code_repo
     link: https://github.com/paulramsey/alloydb-cymbal-financial-demo
+  - title: Transparent Query Forwarding Demo Video
+    type: video
+    link: https://drive.google.com/file/d/1tpykswnCXmBkTSqQ53Iyk8Odtca7Fq5D/view
+  - title: Hybrid Search Demo Video
+    type: video
+    link: https://drive.google.com/file/d/1LgqV86STw3SAtDABiJpvSXoDf0fdzd38/view
+  - title: Lakehouse Federation Demo Video
+    type: video
+    link: https://drive.google.com/file/d/1z7nC20nMdKmQfYluJT0wz1s5ak3axFu1/view
+  - title: Fraud Detection Demo Video
+    type: video
+    link: https://drive.google.com/file/d/1rHVFPgMbxRtzGmmQ_2uauvH-INqubfil/view
 
 featured_artifact_title: Source Code Repository
+
+featured_video_artifact_title: Fraud Detection Demo Video
 
 industries:
   - financial_services

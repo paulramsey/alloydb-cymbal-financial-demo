@@ -167,7 +167,7 @@ After the deployment is complete, you can access the web interface of the Financ
 
 1. **Get the Cloud Run URL**:
    ```bash
-   terraform output -raw cloud_run_url
+   terraform output -raw cloud_run_url && echo ""
    ```
 2. **Navigate to the Interface**:
    Open the URL returned by the command in your web browser.
