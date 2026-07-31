@@ -190,7 +190,9 @@ psql "host=$(terraform output -raw alloydb_public_ip) user=postgres sslmode=requ
 
 To save costs when the demo is not in use without deleting your data, you can pause the AlloyDB cluster. This is important because the demo requires at least 4 vCPUs for decent performance with over 10 Million rows, which can be expensive for an idle demo environment if left running.
 
-We provide two scripts in the `operations/` directory for this purpose:
+### Option 1: Manual Shell Scripts
+
+We provide two CLI scripts in the `operations/` directory:
 
 1.  **Pause Cluster**: Stops the read pool instance first, followed by the primary instance.
     ```bash
@@ -201,7 +203,36 @@ We provide two scripts in the `operations/` directory for this purpose:
     ./operations/start-cluster.sh
     ```
 
-These scripts dynamically resolve the project, region, and cluster ID from Terraform output and use `--activation-policy` to stop and start the instances. They also include polling to ensure operations complete in the correct order.
+These scripts resolve dynamically from `PROJECT_ID` environment variables / Terraform output and handle sequential state transitions automatically.
+
+### Option 2: Automated Daily Schedule (Cloud Function + Cloud Scheduler)
+
+You can deploy an automated serverless scheduler that automatically starts the cluster at **7:00 AM Pacific Time** and pauses it at **7:00 PM Pacific Time** every day.
+
+The code and deployment script are located in [operations/cloud-function](./operations/cloud-function/README.md).
+
+#### Deploying the Automated Scheduler:
+1. Grant the default compute service account AlloyDB Admin access:
+   ```bash
+   PROJECT_NUMBER=$(gcloud projects describe YOUR_PROJECT_ID --format="value(projectNumber)")
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+     --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+     --role="roles/alloydb.admin"
+   ```
+2. Run the deployment script:
+   ```bash
+   ./operations/cloud-function/deploy.sh
+   ```
+
+#### Manual Triggering via Cloud Scheduler:
+You can trigger the automated start/pause jobs on demand at any time:
+```bash
+# Start cluster on demand
+gcloud scheduler jobs run alloydb-start-daily --location=us-central1
+
+# Pause cluster on demand
+gcloud scheduler jobs run alloydb-pause-daily --location=us-central1
+```
 
 ## Clean Up
 
