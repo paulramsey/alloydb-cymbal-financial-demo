@@ -70,7 +70,12 @@ data "google_project" "project" {
 
 # Get execution environment IP for network security rules
 data "http" "myip" {
-  url = "https://ipv4.icanhazip.com"
+  count = var.authorized_external_cidr == null ? 1 : 0
+  url   = "https://api.ipify.org"
+}
+
+locals {
+  authorized_cidr = var.authorized_external_cidr != null ? var.authorized_external_cidr : "${chomp(data.http.myip[0].response_body)}/32"
 }
 
 # Override the Argolis policies
@@ -201,7 +206,6 @@ resource "google_alloydb_instance" "primary" {
   availability_type = var.alloydb_availability_type
   machine_config {
     cpu_count = var.alloydb_cpu_count
-    machine_type = var.alloydb_cpu_count > 1 ? "c4a-highmem-${var.alloydb_cpu_count}-lssd" : "c4a-highmem-${var.alloydb_cpu_count}"
   }
   database_flags = merge(
     {
@@ -236,13 +240,13 @@ resource "google_alloydb_instance" "primary" {
   }
 
   connection_pool_config {
-    enabled      = true
+    enabled = true
   }
 
   network_config {
     enable_public_ip = true
     authorized_external_networks {
-      cidr_range = "${chomp(data.http.myip.response_body)}/32"
+      cidr_range = local.authorized_cidr
     }
   }
 }
@@ -258,7 +262,7 @@ resource "null_resource" "alloydb_read_pool" {
     region         = var.region
     project_id     = var.gcp_project_id
     max_node_count = 2
-    my_ip          = "${chomp(data.http.myip.response_body)}/32"
+    my_ip          = local.authorized_cidr
   }
 
   provisioner "local-exec" {
@@ -283,8 +287,7 @@ resource "null_resource" "alloydb_read_pool" {
           --enable-autoscaler \
           --autoscaler-max-node-count=${self.triggers.max_node_count} \
           --autoscaler-target-cpu-usage=0.6 \
-          --cpu-count=1 \
-          --machine-type="c4a-highmem-1" \
+          --cpu-count=2 \
           --assign-inbound-public-ip=ASSIGN_IPV4 \
           --ssl-mode=ALLOW_UNENCRYPTED_AND_ENCRYPTED \
           --database-flags="google_columnar_engine.enabled=on,google_columnar_engine.enable_vectorized_join=on,google_columnar_engine.enable_index_caching=on,google_ml_integration.enable_model_support=on,google_ml_integration.enable_ai_query_engine=on,password.enforce_complexity=on,password.min_uppercase_letters=1,password.min_numerical_chars=1,password.min_pass_length=10,bigquery_fdw.enabled=on" \

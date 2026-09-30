@@ -77,13 +77,13 @@ resource "null_resource" "run_ddl" {
 # It uses a local-exec provisioner to make a REST API call, similar to the notebook.
 locals {
   csv_imports = {
-    "cards"                   = "cards"
-    "fraud_labels"            = "fraud_labels"
-    "mcc_codes"               = "mcc_codes"
-    "sec_to_iceberg_mapping"  = "sec_to_iceberg_mapping"
-    "transactions_25_26"      = "transactions_25_26"
-    "users"                   = "users"
-    "sec_document_chunks"     = "sec_document_chunks"
+    "cards"                  = "cards"
+    "fraud_labels"           = "fraud_labels"
+    "mcc_codes"              = "mcc_codes"
+    "sec_to_iceberg_mapping" = "sec_to_iceberg_mapping"
+    "transactions_25_26"     = "transactions_25_26"
+    "users"                  = "users"
+    "sec_document_chunks"    = "sec_document_chunks"
   }
 }
 
@@ -102,7 +102,7 @@ resource "null_resource" "import_csv" {
         --region=${var.region} \
         --project=${var.gcp_project_id} \
         --database=${var.alloydb_database} \
-        --gcs-uri=gs://pr-public-demo-data/cymbal-financial-demo/alloydb/${each.key}.csv \
+        --gcs-uri=gs://pr-public-demo-data-hop1/cymbal-financial-demo/alloydb/${each.key}.csv \
         --table=${each.value} \
         --csv \
         --async \
@@ -111,21 +111,12 @@ resource "null_resource" "import_csv" {
       echo "Started import for ${each.value}. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -165,21 +156,12 @@ resource "null_resource" "post_load_prep" {
       echo "Started post-load preparation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -219,21 +201,12 @@ resource "null_resource" "run_idx_1" {
       echo "Started index 1 creation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -267,21 +240,12 @@ resource "null_resource" "run_checkpoint_after_idx_1" {
       echo "Started checkpoint after index 1. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -321,21 +285,12 @@ resource "null_resource" "run_idx_2" {
       echo "Started index 2 creation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -369,21 +324,12 @@ resource "null_resource" "run_checkpoint_after_idx_2" {
       echo "Started checkpoint after index 2. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -423,21 +369,12 @@ resource "null_resource" "run_idx_3" {
       echo "Started index 3 creation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -471,21 +408,12 @@ resource "null_resource" "run_checkpoint_after_idx_3" {
       echo "Started checkpoint after index 3. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -525,21 +453,12 @@ resource "null_resource" "run_rum_patch" {
       echo "Started RUM patch. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -554,9 +473,9 @@ resource "null_resource" "run_rum_patch" {
 }
 
 resource "google_storage_bucket_object" "idx_4_script" {
-  name   = "idx_4_sec_chunks_rum.sql"
+  name   = "idx_4_sec_chunks_bm25.sql"
   bucket = google_storage_bucket.text_data.name
-  source = "${path.module}/../data/idx_4_sec_chunks_rum.sql"
+  source = "${path.module}/../data/idx_4_sec_chunks_bm25.sql"
 }
 
 resource "null_resource" "run_idx_4" {
@@ -579,21 +498,12 @@ resource "null_resource" "run_idx_4" {
       echo "Started index 4 creation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -627,21 +537,12 @@ resource "null_resource" "run_checkpoint_after_idx_4" {
       echo "Started checkpoint after index 4. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -681,21 +582,12 @@ resource "null_resource" "run_idx_5" {
       echo "Started index 5 creation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -729,21 +621,12 @@ resource "null_resource" "run_checkpoint_after_idx_5" {
       echo "Started checkpoint after index 5. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -783,21 +666,12 @@ resource "null_resource" "run_idx_6" {
       echo "Started index 6 creation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -831,21 +705,12 @@ resource "null_resource" "post_load_prep_final" {
       echo "Started final post-load preparation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -885,21 +750,12 @@ resource "null_resource" "run_alloydb_pin_hnsw" {
       echo "Started pin HNSW index creation. Operation: $OPERATION_PATH"
       
       while true; do
-        DESC=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="json" 2>&1)
-        DONE=$(echo "$DESC" | sed -n '/^{/,$p' | jq -r '.done' 2>/dev/null)
+        DONE=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(done)" 2>/dev/null)
         
-        if [ -z "$DONE" ]; then
-          echo "Warning: Failed to parse operation status. Raw output was:"
-          echo "$DESC"
-          echo "Retrying..."
-          sleep 10
-          continue
-        fi
-        
-        if [ "$DONE" = "true" ]; then
-          ERROR=$(echo $DESC | jq -r '.error')
-          if [ "$ERROR" != "null" ]; then
-            echo "Operation failed: $ERROR"
+        if [ "$DONE" = "True" ] || [ "$DONE" = "true" ]; then
+          ERROR_MSG=$(gcloud alloydb operations describe $(basename $OPERATION_PATH) --region=${var.region} --format="value(error.message)" 2>/dev/null)
+          if [ -n "$ERROR_MSG" ]; then
+            echo "Operation failed: $ERROR_MSG"
             exit 1
           fi
           echo "Operation completed successfully."
@@ -924,7 +780,12 @@ resource "google_storage_bucket_object" "setup_fdw_script" {
 resource "null_resource" "run_setup_fdw" {
   depends_on = [
     null_resource.run_alloydb_pin_hnsw,
-    google_storage_bucket_object.setup_fdw_script
+    google_storage_bucket_object.setup_fdw_script,
+    null_resource.load_stock_metadata,
+    null_resource.load_company_concepts,
+    null_resource.load_company_facts,
+    null_resource.load_company_tickers,
+    null_resource.load_sec_13f_holdings
   ]
 
   provisioner "local-exec" {

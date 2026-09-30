@@ -4,6 +4,8 @@ resource "null_resource" "build_and_push_image" {
   ]
 
   triggers = {
+    region               = var.region
+    repo                 = google_artifact_registry_repository.app_repo.id
     backend_hash         = filesha256("${path.module}/../backend/main.py")
     frontend_hash        = filesha256("${path.module}/../frontend/src/App.jsx")
     dockerfile_hash      = filesha256("${path.module}/../Dockerfile")

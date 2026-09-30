@@ -44,6 +44,7 @@ alloydb_private_ip.txt
 
 # Internal files
 internal/
+reproduce.md
 
 # Python Virtual Environment
 venv/

@@ -221,7 +221,7 @@ function App() {
   const [isEnhanced, setIsEnhanced] = useState(false)
   const [showOverviewSql, setShowOverviewSql] = useState(false)
   const [showHoldingsSql, setShowHoldingsSql] = useState(false)
-  const [ftsIndex, setFtsIndex] = useState('rum')
+  const [ftsIndex, setFtsIndex] = useState('gin')
   const [reranker, setReranker] = useState('vertex')
   const [hasSearched, setHasSearched] = useState(false)
   
@@ -724,9 +724,9 @@ function App() {
                       value={ftsIndex}
                       onChange={(e) => setFtsIndex(e.target.value)}
                     >
+                      <option value="bm25">BM25 (pg_textsearch)</option>
                       <option value="rum">RUM</option>
                       <option value="gin">Native GIN</option>
-                      <option value="bm25" disabled>BM25 (Coming Soon)</option>
                     </select>
                   </div>
                 )}
@@ -738,7 +738,7 @@ function App() {
                       value={reranker}
                       onChange={(e) => setReranker(e.target.value)}
                     >
-                      <option value="vertex">Vertex AI (semantic-ranker-512)</option>
+                      <option value="vertex">Gemini Enterprise (semantic-ranker-512)</option>
                       <option value="rrf">Reciprocal Rank Fusion (RRF)</option>
                       <option value="none">None</option>
                     </select>
@@ -769,7 +769,7 @@ function App() {
                     <th style={{ padding: '0.75rem' }}>Score</th>
                     <th style={{ padding: '0.75rem' }}>Ticker</th>
                     <th style={{ padding: '0.75rem' }}>Type</th>
-                    {searchMode === 'hybrid' && <th style={{ padding: '0.75rem' }}>Method</th>}
+                    <th style={{ padding: '0.75rem' }}>Method</th>
                     <th style={{ padding: '0.75rem' }}>Chunk</th>
                     <th style={{ padding: '0.75rem' }}>Chunk Text</th>
                     <th style={{ padding: '0.75rem' }}>Explain</th>
@@ -825,15 +825,13 @@ function App() {
                           </span>
                         )}
                       </td>
-                      {searchMode === 'hybrid' && (
-                        <td style={{ padding: '0.75rem' }}>
-                          {result.retrieval_method ? (
-                            <span style={{ background: 'var(--border-color)', color: 'var(--text-primary)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                              {result.retrieval_method}
-                            </span>
-                          ) : 'N/A'}
-                        </td>
-                      )}
+                      <td style={{ padding: '0.75rem' }}>
+                        {result.retrieval_method ? (
+                          <span style={{ background: 'var(--border-color)', color: 'var(--text-primary)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                            {result.retrieval_method}
+                          </span>
+                        ) : 'N/A'}
+                      </td>
                       <td style={{ padding: '0.75rem' }}>{result.chunk_index !== undefined ? result.chunk_index : 'N/A'}</td>
                       <td className="expandable-cell" style={{ padding: '0.75rem', fontSize: '0.875rem', maxWidth: '400px' }}>
                         <details>

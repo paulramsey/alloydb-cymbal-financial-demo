@@ -1,18 +1,18 @@
 resource "google_bigquery_dataset" "reference_data" {
-  dataset_id                  = "cymbal_reference"
-  friendly_name               = "Cymbal Reference Data"
-  description                 = "Reference data for the Cymbal Investments demo"
-  location                    = var.region
+  dataset_id                 = "cymbal_reference"
+  friendly_name              = "Cymbal Reference Data"
+  description                = "Reference data for the Cymbal Investments demo"
+  location                   = var.region
   delete_contents_on_destroy = true
-  project                     = var.gcp_project_id
+  project                    = var.gcp_project_id
 }
 
 # Native Tables with explicit schemas
 
 resource "google_bigquery_table" "stock_metadata" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "stock_metadata"
-  project    = var.gcp_project_id
+  dataset_id          = google_bigquery_dataset.reference_data.dataset_id
+  table_id            = "stock_metadata"
+  project             = var.gcp_project_id
   deletion_protection = false
 
   clustering = ["iceberg_company_name", "Symbol"]
@@ -37,9 +37,9 @@ EOF
 }
 
 resource "google_bigquery_table" "company_concepts" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "company_concepts"
-  project    = var.gcp_project_id
+  dataset_id          = google_bigquery_dataset.reference_data.dataset_id
+  table_id            = "company_concepts"
+  project             = var.gcp_project_id
   deletion_protection = false
 
   range_partitioning {
@@ -72,10 +72,10 @@ EOF
 }
 
 resource "google_bigquery_table" "company_facts" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "company_facts"
-  project    = var.gcp_project_id
-  deletion_protection = false
+  dataset_id                   = google_bigquery_dataset.reference_data.dataset_id
+  table_id                     = "company_facts"
+  project                      = var.gcp_project_id
+  deletion_protection          = false
   ignore_auto_generated_schema = true
 
   # Assuming similar schema or autodetect on load. 
@@ -100,9 +100,9 @@ EOF
 }
 
 resource "google_bigquery_table" "company_tickers" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "company_tickers"
-  project    = var.gcp_project_id
+  dataset_id          = google_bigquery_dataset.reference_data.dataset_id
+  table_id            = "company_tickers"
+  project             = var.gcp_project_id
   deletion_protection = false
 
   clustering = ["cik", "ticker"]
@@ -121,7 +121,11 @@ EOF
 # (but it is supported by the API).
 
 resource "null_resource" "create_sec_10k_iceberg" {
-  depends_on = [null_resource.copy_bq_data]
+  depends_on = [
+    null_resource.copy_bq_data,
+    google_bigquery_connection.biglake_connection,
+    google_bigquery_dataset.reference_data
+  ]
 
   triggers = {
     query_hash = sha256(<<EOF
@@ -175,9 +179,9 @@ EOF
 # Google Cloud Lakehouse Table (External with Connection)
 
 resource "google_bigquery_table" "sec_13f_holdings" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "sec_13f_holdings"
-  project    = var.gcp_project_id
+  dataset_id          = google_bigquery_dataset.reference_data.dataset_id
+  table_id            = "sec_13f_holdings"
+  project             = var.gcp_project_id
   deletion_protection = false
 
   clustering = ["ticker", "manager_name"]
@@ -200,14 +204,14 @@ EOF
 }
 
 resource "google_bigquery_table" "vw_stock_10k_holdings" {
-  dataset_id = google_bigquery_dataset.reference_data.dataset_id
-  table_id   = "vw_stock_10k_holdings"
-  project    = var.gcp_project_id
+  dataset_id          = google_bigquery_dataset.reference_data.dataset_id
+  table_id            = "vw_stock_10k_holdings"
+  project             = var.gcp_project_id
   deletion_protection = false
-  depends_on = [null_resource.create_sec_10k_iceberg, google_bigquery_table.stock_metadata]
+  depends_on          = [null_resource.create_sec_10k_iceberg, google_bigquery_table.stock_metadata]
 
   view {
-    query = <<EOF
+    query          = <<EOF
 SELECT 
     sm.Symbol,
     sm.Security_Name,

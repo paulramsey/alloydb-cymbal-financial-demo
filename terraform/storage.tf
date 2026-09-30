@@ -19,7 +19,11 @@ resource "google_storage_bucket" "bq_data" {
 resource "null_resource" "copy_bq_data" {
   depends_on = [google_storage_bucket.bq_data]
 
+  triggers = {
+    bucket_id = google_storage_bucket.bq_data.id
+  }
+
   provisioner "local-exec" {
-    command = "gcloud storage cp -r gs://pr-public-demo-data/cymbal-financial-demo/bigquery/* gs://${google_storage_bucket.bq_data.name}/"
+    command = "gcloud storage cp -r gs://pr-public-demo-data-hop1/cymbal-financial-demo/bigquery/* gs://${google_storage_bucket.bq_data.name}/"
   }
 }

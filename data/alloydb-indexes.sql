@@ -6,6 +6,6 @@ CREATE INDEX IF NOT EXISTS idx_transactions_25_26_scann ON public.transactions_2
 
 -- Indexes for table sec_document_chunks
 CREATE INDEX IF NOT EXISTS idx_sec_chunks_fts ON public.sec_document_chunks USING gin (fts_document);
-CREATE INDEX IF NOT EXISTS idx_sec_chunks_rum ON public.sec_document_chunks USING rum (fts_document);
+CREATE INDEX IF NOT EXISTS idx_sec_chunks_bm25 ON public.sec_document_chunks USING bm25 (chunk_text) WITH (text_config = 'english');
 CREATE INDEX IF NOT EXISTS idx_sec_chunks_scann ON public.sec_document_chunks USING scann (embedding cosine) WITH (mode='AUTO');
 CREATE INDEX IF NOT EXISTS idx_sec_chunks_hnsw ON public.sec_document_chunks USING hnsw (embedding_hnsw vector_cosine_ops) WITH (m='16', ef_construction='64');

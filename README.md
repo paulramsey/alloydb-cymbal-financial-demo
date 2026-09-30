@@ -4,7 +4,7 @@ This repository contains Terraform code to deploy a fully configured **Google Cl
 
 *   **Transparent Query Forwarding (TQF)**: Automatically reroutes expensive read queries from the primary instance to the read pool without application code changes, ensuring read-after-write consistency and low latency for mission-critical writes.
 *   **Lakehouse Federation**: Unifies live transactional data with historical archives in BigQuery and Apache Iceberg (parquet), allowing direct queries across the entire data platform through a single lens.
-*   **Hybrid Search**: Combines keyword precision with semantic depth using Google's ScaNN algorithm and Supercharged HNSW with Columnar Engine acceleration, scaling up to 10B+ vectors. Supports native GIN indexing, the RUM extension for full-text performance, and future native BM25. Provides seamless reranking with Reciprocal Rank Fusion (RRF) and Vertex AI models (or bring your own model).
+*   **Hybrid Search**: Combines keyword precision with semantic depth using Google's ScaNN algorithm and Supercharged HNSW with Columnar Engine acceleration, scaling up to 10B+ vectors. Supports native GIN indexing and native BM25 full-text indexing (`pg_textsearch`). Provides seamless reranking with Reciprocal Rank Fusion (RRF) and Gemini Enterprise models (or bring your own model).
 *   **Real-Time Fraud Detection**: Leverages vector search for anomaly detection in high-velocity transaction streams and enhances recall with Gemini's reasoning via the `ai.if()` function.
 
 ## Screenshots
@@ -133,7 +133,7 @@ Before deploying, ensure you have the following:
     terraform apply -var="alloydb_cpu_count=32"
     ```
     *   Type `yes` when prompted.
-    *   Deployment typically takes up to 2 hours end-to-end, as it loads millions of records and builds very large indexes (ScaNN, HNSW, GIN, and RUM).
+    *   Deployment typically takes up to 2 hours end-to-end, as it loads millions of records and builds very large indexes (ScaNN, HNSW, GIN, and BM25).
     *   **Pro Tip for Mac Users**: Since this takes around 2 hours, if you lock your computer or it goes to sleep, the process might be interrupted. You can use `caffeinate` to keep your Mac awake. Simply open a new terminal and run `caffeinate` while `terraform apply` is running in the other terminal (and be sure to stop the `caffeinate` process when `terraform` completes by pressing `Ctrl+C`).
     *   Setting `alloydb_cpu_count=32` will also apply aggressive performance database flags (like `maintenance_work_mem` and `max_wal_size`) tailored for large imports.
 

@@ -100,7 +100,7 @@ async def generate_load_task(worker_id):
         await asyncio.sleep(random.uniform(0.2, 0.8))
 
 @app.get("/api/search")
-def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsIndex: str = "rum", reranker: str = "none", explain: bool = False):
+def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsIndex: str = "gin", reranker: str = "none", explain: bool = False):
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
@@ -109,26 +109,50 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
     
     try:
         params = ()
-        fts_index_name = "idx_sec_chunks_rum" if ftsIndex == "rum" else "idx_sec_chunks_fts"
-        fts_hint_type = "BitmapScan" if ftsIndex == "gin" else "IndexScan"
-        fts_hint = f"/*+ {fts_hint_type}(sec_document_chunks {fts_index_name}) */"
+        if ftsIndex == "bm25":
+            fts_index_name = "idx_sec_chunks_bm25"
+            fts_hint = f"/*+ IndexScan(sec_document_chunks {fts_index_name}) */"
+            fts_table_hint = f"IndexScan(fts_table {fts_index_name})"
+        elif ftsIndex == "rum":
+            fts_index_name = "idx_sec_chunks_rum"
+            fts_hint = f"/*+ IndexScan(sec_document_chunks {fts_index_name}) */"
+            fts_table_hint = f"IndexScan(fts_table {fts_index_name})"
+        else:
+            fts_index_name = "idx_sec_chunks_fts"
+            fts_hint = f"/*+ BitmapScan(sec_document_chunks {fts_index_name}) */"
+            fts_table_hint = f"BitmapScan(fts_table {fts_index_name})"
         
-        if ftsIndex == "rum":
+        if ftsIndex == "bm25":
+            fts_score_expr = "(-1.0 * (chunk_text <@> %s))"
+        elif ftsIndex == "rum":
             fts_score_expr = "(1 / (1 + (fts_document <=> plainto_tsquery('english', %s))))"
         else:
             fts_score_expr = "ts_rank(fts_document, plainto_tsquery('english', %s))"
 
         if mode == "fulltext":
-            sql = f"""
-            {fts_hint}
-            SELECT ticker, accession_number, chunk_index, chunk_text,
-                   {fts_score_expr} as score
-            FROM sec_document_chunks
-            WHERE fts_document @@ plainto_tsquery('english', %s)
-            ORDER BY score DESC
-            LIMIT 10;
-            """
-            params = (query, query)
+            if ftsIndex == "bm25":
+                sql = f"""
+                {fts_hint}
+                SELECT ticker, accession_number, chunk_index, chunk_text,
+                       {fts_score_expr} as score,
+                       'FTS' as retrieval_method
+                FROM sec_document_chunks
+                ORDER BY chunk_text <@> %s ASC
+                LIMIT 10;
+                """
+                params = (query, query)
+            else:
+                sql = f"""
+                {fts_hint}
+                SELECT ticker, accession_number, chunk_index, chunk_text,
+                       {fts_score_expr} as score,
+                       'FTS' as retrieval_method
+                FROM sec_document_chunks
+                WHERE fts_document @@ plainto_tsquery('english', %s)
+                ORDER BY score DESC
+                LIMIT 10;
+                """
+                params = (query, query)
             
         elif mode == "vector":
             if vectorIndex == "hnsw":
@@ -154,7 +178,8 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                   s.ticker,
                   s.accession_number,
                   s.chunk_index,
-                  s.chunk_text
+                  s.chunk_text,
+                  'VECTOR' AS retrieval_method
                 FROM
                   vector_search vs
                   JOIN sec_document_chunks s ON vs.id = s.id
@@ -185,7 +210,8 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                   s.ticker,
                   s.accession_number,
                   s.chunk_index,
-                  s.chunk_text
+                  s.chunk_text,
+                  'VECTOR' AS retrieval_method
                 FROM
                   vector_search vs
                   JOIN sec_document_chunks s ON vs.id = s.id
@@ -196,27 +222,31 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
             params = (query,)
             
         elif mode == "hybrid":
+            vec_model = 'text-embedding-005' if vectorIndex == "hnsw" else 'gemini-embedding-001'
+            vec_col = 'embedding_hnsw' if vectorIndex == "hnsw" else 'embedding'
+            vec_idx = 'idx_sec_chunks_hnsw' if vectorIndex == "hnsw" else 'idx_sec_chunks_scann'
+            
             if reranker == "rrf":
-                if vectorIndex == "hnsw":
+                if ftsIndex == "bm25":
                     sql = f"""
                     /*+
-                        {fts_hint_type}(fts_table {fts_index_name})
-                        IndexScan(vec_table idx_sec_chunks_hnsw)
+                        {fts_table_hint}
+                        IndexScan(vec_table {vec_idx})
                      */
                     WITH e AS (
-                        SELECT ai.embedding('text-embedding-005', %s)::vector AS query_embedding
+                        SELECT ai.embedding('{vec_model}', %s)::vector AS query_embedding
                     ),
                     fts AS (
-                        SELECT id, RANK() OVER (ORDER BY {fts_score_expr} DESC) AS rank
+                        SELECT id, ROW_NUMBER() OVER () AS rank
                         FROM sec_document_chunks fts_table
-                        WHERE fts_document @@ plainto_tsquery('english', %s)
+                        ORDER BY chunk_text <@> %s ASC
                         LIMIT 20
                     ),
                     vec AS (
-                        SELECT id, RANK() OVER (ORDER BY embedding_hnsw <=> e.query_embedding) AS rank
+                        SELECT id, RANK() OVER (ORDER BY {vec_col} <=> e.query_embedding) AS rank
                         FROM sec_document_chunks vec_table, e
-                        WHERE embedding_hnsw <=> e.query_embedding < 0.5
-                        ORDER BY embedding_hnsw <=> e.query_embedding
+                        WHERE {vec_col} <=> e.query_embedding < 0.5
+                        ORDER BY {vec_col} <=> e.query_embedding
                         LIMIT 20
                     ),
                     ranked AS (
@@ -243,14 +273,15 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                     JOIN sec_document_chunks s ON r.id = s.id
                     ORDER BY r.combined_score DESC;
                     """
+                    params = (query, query)
                 else:
                     sql = f"""
                     /*+
-                        {fts_hint_type}(fts_table {fts_index_name})
-                        IndexScan(vec_table idx_sec_chunks_scann)
+                        {fts_table_hint}
+                        IndexScan(vec_table {vec_idx})
                      */
                     WITH e AS (
-                        SELECT ai.embedding('gemini-embedding-001', %s)::vector AS query_embedding
+                        SELECT ai.embedding('{vec_model}', %s)::vector AS query_embedding
                     ),
                     fts AS (
                         SELECT id, RANK() OVER (ORDER BY {fts_score_expr} DESC) AS rank
@@ -259,10 +290,10 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                         LIMIT 20
                     ),
                     vec AS (
-                        SELECT id, RANK() OVER (ORDER BY embedding <=> e.query_embedding) AS rank
+                        SELECT id, RANK() OVER (ORDER BY {vec_col} <=> e.query_embedding) AS rank
                         FROM sec_document_chunks vec_table, e
-                        WHERE embedding <=> e.query_embedding < 0.5
-                        ORDER BY embedding <=> e.query_embedding
+                        WHERE {vec_col} <=> e.query_embedding < 0.5
+                        ORDER BY {vec_col} <=> e.query_embedding
                         LIMIT 20
                     ),
                     ranked AS (
@@ -289,28 +320,28 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                     JOIN sec_document_chunks s ON r.id = s.id
                     ORDER BY r.combined_score DESC;
                     """
-                params = (query, query, query)
+                    params = (query, query, query)
             elif reranker == "vertex":
-                if vectorIndex == "hnsw":
+                if ftsIndex == "bm25":
                     sql = f"""
                     /*+
-                        {fts_hint_type}(fts_table {fts_index_name})
-                        IndexScan(vec_table idx_sec_chunks_hnsw)
+                        {fts_table_hint}
+                        IndexScan(vec_table {vec_idx})
                      */
                     WITH e AS (
-                        SELECT ai.embedding('text-embedding-005', %s)::vector AS query_embedding
+                        SELECT ai.embedding('{vec_model}', %s)::vector AS query_embedding
                     ),
                     fts AS (
-                        SELECT id, RANK() OVER (ORDER BY {fts_score_expr} DESC) AS rank
+                        SELECT id, ROW_NUMBER() OVER () AS rank
                         FROM sec_document_chunks fts_table
-                        WHERE fts_document @@ plainto_tsquery('english', %s)
+                        ORDER BY chunk_text <@> %s ASC
                         LIMIT 100
                     ),
                     vec AS (
-                        SELECT id, RANK() OVER (ORDER BY embedding_hnsw <=> e.query_embedding) AS rank
+                        SELECT id, RANK() OVER (ORDER BY {vec_col} <=> e.query_embedding) AS rank
                         FROM sec_document_chunks vec_table, e
-                        WHERE embedding_hnsw <=> e.query_embedding < 0.5
-                        ORDER BY embedding_hnsw <=> e.query_embedding
+                        WHERE {vec_col} <=> e.query_embedding < 0.5
+                        ORDER BY {vec_col} <=> e.query_embedding
                         LIMIT 100
                     ),
                     hybrid_candidates AS (
@@ -348,15 +379,15 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                     JOIN sec_document_chunks s ON hc.id = s.id
                     ORDER BY r.score DESC;
                     """
-                    params = (query, query, query, query)
+                    params = (query, query, query)
                 else:
                     sql = f"""
                     /*+
-                        {fts_hint_type}(fts_table {fts_index_name})
-                        IndexScan(vec_table idx_sec_chunks_scann)
+                        {fts_table_hint}
+                        IndexScan(vec_table {vec_idx})
                      */
                     WITH e AS (
-                        SELECT ai.embedding('gemini-embedding-001', %s)::vector AS query_embedding
+                        SELECT ai.embedding('{vec_model}', %s)::vector AS query_embedding
                     ),
                     fts AS (
                         SELECT id, RANK() OVER (ORDER BY {fts_score_expr} DESC) AS rank
@@ -365,10 +396,10 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                         LIMIT 100
                     ),
                     vec AS (
-                        SELECT id, RANK() OVER (ORDER BY embedding <=> e.query_embedding) AS rank
+                        SELECT id, RANK() OVER (ORDER BY {vec_col} <=> e.query_embedding) AS rank
                         FROM sec_document_chunks vec_table, e
-                        WHERE embedding <=> e.query_embedding < 0.5
-                        ORDER BY embedding <=> e.query_embedding
+                        WHERE {vec_col} <=> e.query_embedding < 0.5
+                        ORDER BY {vec_col} <=> e.query_embedding
                         LIMIT 100
                     ),
                     hybrid_candidates AS (
@@ -408,32 +439,32 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                     """
                     params = (query, query, query, query)
             else:
-                if vectorIndex == "hnsw":
+                if ftsIndex == "bm25":
                     sql = f"""
                     /*+
-                        {fts_hint_type}(fts_table {fts_index_name})
-                        IndexScan(vec_table idx_sec_chunks_hnsw)
+                        {fts_table_hint}
+                        IndexScan(vec_table {vec_idx})
                      */
                     WITH e AS (
-                        SELECT ai.embedding('text-embedding-005', %s)::vector AS query_embedding
+                        SELECT ai.embedding('{vec_model}', %s)::vector AS query_embedding
                     ),
                     fts AS (
                         SELECT id, {fts_score_expr} as score
                         FROM sec_document_chunks fts_table
-                        WHERE fts_document @@ plainto_tsquery('english', %s)
+                        ORDER BY chunk_text <@> %s ASC
                         LIMIT 20
                     ),
                     vec AS (
-                        SELECT id, (embedding_hnsw <=> e.query_embedding) AS distance
+                        SELECT id, ({vec_col} <=> e.query_embedding) AS distance
                         FROM sec_document_chunks vec_table, e
-                        WHERE embedding_hnsw <=> e.query_embedding < 0.5
-                        ORDER BY embedding_hnsw <=> e.query_embedding
+                        WHERE {vec_col} <=> e.query_embedding < 0.5
+                        ORDER BY {vec_col} <=> e.query_embedding
                         LIMIT 20
                     ),
                     ranked AS (
                         SELECT 
                             COALESCE(fts.id, vec.id) AS id,
-                            COALESCE(fts.score, 0) + COALESCE(1 - vec.distance, 0) AS combined_score,
+                            COALESCE(1.0 / (1.0 + EXP(- (fts.score - 10.0) / 2.0)), 0) + COALESCE(1 - vec.distance, 0) AS combined_score,
                             CONCAT_WS('+', 
                                 CASE WHEN vec.id IS NOT NULL THEN 'VECTOR' ELSE NULL END,
                                 CASE WHEN fts.id IS NOT NULL THEN 'FTS' ELSE NULL END
@@ -454,14 +485,15 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                     JOIN sec_document_chunks s ON r.id = s.id
                     ORDER BY r.combined_score DESC;
                     """
+                    params = (query, query, query)
                 else:
                     sql = f"""
                     /*+
-                        {fts_hint_type}(fts_table {fts_index_name})
-                        IndexScan(vec_table idx_sec_chunks_scann)
+                        {fts_table_hint}
+                        IndexScan(vec_table {vec_idx})
                      */
                     WITH e AS (
-                        SELECT ai.embedding('gemini-embedding-001', %s)::vector AS query_embedding
+                        SELECT ai.embedding('{vec_model}', %s)::vector AS query_embedding
                     ),
                     fts AS (
                         SELECT id, {fts_score_expr} as score
@@ -470,10 +502,10 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                         LIMIT 20
                     ),
                     vec AS (
-                        SELECT id, (embedding <=> e.query_embedding) AS distance
+                        SELECT id, ({vec_col} <=> e.query_embedding) AS distance
                         FROM sec_document_chunks vec_table, e
-                        WHERE embedding <=> e.query_embedding < 0.5
-                        ORDER BY embedding <=> e.query_embedding
+                        WHERE {vec_col} <=> e.query_embedding < 0.5
+                        ORDER BY {vec_col} <=> e.query_embedding
                         LIMIT 20
                     ),
                     ranked AS (
@@ -500,7 +532,7 @@ def search(query: str, mode: str = "hybrid", vectorIndex: str = "scann", ftsInde
                     JOIN sec_document_chunks s ON r.id = s.id
                     ORDER BY r.combined_score DESC;
                     """
-                params = (query, query, query)
+                    params = (query, query, query)
             
         sql = textwrap.dedent(sql)
         if explain:
@@ -1090,7 +1122,7 @@ def fraud_enhance(transaction_id: str):
         sql = """
         SELECT ai.if(
           prompts => ARRAY[%s, %s, %s],
-          model_id => 'gemini-3.1-flash-lite-preview'
+          model_id => 'gemini-3.5-flash-lite'
         ) AS result;
         """
         
@@ -1126,7 +1158,7 @@ def fraud_enhance(transaction_id: str):
                 '{}',
                 '{}'
               ],
-              model_id => 'gemini-3.1-flash-lite-preview'
+              model_id => 'gemini-3.5-flash-lite'
             ) AS result;
             """.format(*escaped_prompts)
             

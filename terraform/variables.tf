@@ -6,7 +6,7 @@ variable "gcp_project_id" {
 variable "region" {
   description = "The GCP region for resources."
   type        = string
-  default     = "us-central1"
+  default     = "us-west4"
 }
 
 variable "argolis" {
@@ -48,7 +48,7 @@ variable "alloydb_database" {
 variable "database_backup_uri" {
   description = "The GCS path to the database SQL backup."
   type        = string
-  default     = "gs://pr-public-demo-data/cymbal-financial-demo/postgres.sql"
+  default     = "gs://pr-public-demo-data-hop1/cymbal-financial-demo/postgres.sql"
 }
 
 variable "alloydb_image_name" {
@@ -78,7 +78,7 @@ variable "alloydb_repository_id" {
 variable "bigquery_import_bucket_uri" {
   description = "The GCS URI prefix to BigQuery Parquet datasets."
   type        = string
-  default     = "gs://pr-public-demo-data/cymbal-financial-demo/bigquery"
+  default     = "gs://pr-public-demo-data-hop1/cymbal-financial-demo/bigquery"
 }
 
 variable "alloydb_cpu_count" {
@@ -86,3 +86,16 @@ variable "alloydb_cpu_count" {
   type        = number
   default     = 4
 }
+
+variable "authorized_external_cidr" {
+  description = "Optional external CIDR range authorized to connect to AlloyDB instances. If not set, the caller's public IP is automatically detected."
+  type        = string
+  default     = null
+}
+
+variable "allow_unauthenticated_cloud_run" {
+  description = "Whether to grant allUsers invoker access on Cloud Run. Set to false if organization policies restrict public access."
+  type        = bool
+  default     = false
+}
+
