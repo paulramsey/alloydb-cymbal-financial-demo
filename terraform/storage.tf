@@ -24,6 +24,6 @@ resource "null_resource" "copy_bq_data" {
   }
 
   provisioner "local-exec" {
-    command = "gcloud storage cp -r gs://pr-public-demo-data-hop1/cymbal-financial-demo/bigquery/* gs://${google_storage_bucket.bq_data.name}/"
+    command = "gcloud storage cp -r gs://cloud-training/T-AADB-I/cymbal-financial-demo/bigquery/* gs://${google_storage_bucket.bq_data.name}/"
   }
 }

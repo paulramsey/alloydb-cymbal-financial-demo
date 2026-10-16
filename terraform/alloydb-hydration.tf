@@ -102,7 +102,7 @@ resource "null_resource" "import_csv" {
         --region=${var.region} \
         --project=${var.gcp_project_id} \
         --database=${var.alloydb_database} \
-        --gcs-uri=gs://pr-public-demo-data-hop1/cymbal-financial-demo/alloydb/${each.key}.csv \
+        --gcs-uri=gs://cloud-training/T-AADB-I/cymbal-financial-demo/alloydb/${each.key}.csv \
         --table=${each.value} \
         --csv \
         --async \

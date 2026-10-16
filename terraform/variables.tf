@@ -48,7 +48,7 @@ variable "alloydb_database" {
 variable "database_backup_uri" {
   description = "The GCS path to the database SQL backup."
   type        = string
-  default     = "gs://pr-public-demo-data-hop1/cymbal-financial-demo/postgres.sql"
+  default     = "gs://cloud-training/T-AADB-I/cymbal-financial-demo/postgres.sql"
 }
 
 variable "alloydb_image_name" {
@@ -78,7 +78,7 @@ variable "alloydb_repository_id" {
 variable "bigquery_import_bucket_uri" {
   description = "The GCS URI prefix to BigQuery Parquet datasets."
   type        = string
-  default     = "gs://pr-public-demo-data-hop1/cymbal-financial-demo/bigquery"
+  default     = "gs://cloud-training/T-AADB-I/cymbal-financial-demo/bigquery"
 }
 
 variable "alloydb_cpu_count" {
