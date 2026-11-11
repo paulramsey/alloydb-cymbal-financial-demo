@@ -48,7 +48,7 @@ variable "alloydb_database" {
 variable "database_backup_uri" {
   description = "The GCS path to the database SQL backup."
   type        = string
-  default     = "gs://cloud-training/T-AADB-I/cymbal-financial-demo/postgres.sql"
+  default     = "gs://cloud-training/T-AADB-I/cymbal-financial-demo/alloydb/postgres.sql"
 }
 
 variable "alloydb_image_name" {
